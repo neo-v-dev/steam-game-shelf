@@ -1,0 +1,23 @@
+// サイトの公開設定。行頭が // の行はコメントとして無視されます。
+// GitHub 上で直接このファイルを編集して保存(コミット)すると、サイトが自動で再生成されます。
+{
+  // サイトを公開するか。初期設定と非表示設定が終わったら true にしてください。
+  "published": false,
+
+  // サイトのタイトルと説明文
+  "site_title": "My Game Shelf",
+  "site_description": "",
+
+  // 初期表示言語: "ja" または "en"(閲覧者はサイト上で切り替え可能)
+  "default_lang": "ja",
+
+  // プレイ時間を表示するか
+  "show_playtime": true,
+
+  // 最終プレイ日を表示するか
+  "show_last_played": true,
+
+  // 新しく取得されたゲームをデフォルトで表示するか。
+  // false にすると、新規ゲームは data/catalog.json で visible を true にするまで表示されません。
+  "default_visibility": true
+}

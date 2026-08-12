@@ -1,0 +1,68 @@
+name: Update game list
+
+on:
+  # 毎日 18:00 UTC (日本時間 翌3:00) に自動更新
+  schedule:
+    - cron: '0 18 * * *'
+  # Actions タブから手動実行(初回のリスト取得もこれを使う)
+  workflow_dispatch:
+  # 設定・カタログ・サイトを編集したときは取得なしで再ビルド&デプロイ
+  push:
+    branches: [main]
+    paths:
+      - 'config/**'
+      - 'data/**'
+      - 'site/**'
+      - 'scripts/**'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch owned games from Steam
+        if: github.event_name != 'push'
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          STEAM_ID: ${{ secrets.STEAM_ID }}
+        run: node scripts/update.mjs
+
+      - name: Commit catalog changes
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/catalog.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update game catalog"
+            git push
+          fi
+
+      - name: Build site data
+        run: node scripts/build.mjs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
