@@ -20,8 +20,51 @@ export function parseJsonc(text) {
 export function setJsoncValue(text, key, value) {
   const encoded = JSON.stringify(value);
   const re = new RegExp(`("${key}"\\s*:\\s*)(?:"(?:[^"\\\\]|\\\\.)*"|true|false|null|[\\d.eE+-]+)`);
-  if (re.test(text)) return text.replace(re, `$1${encoded}`);
-  return text.replace(/\{/, `{\n  "${key}": ${encoded},`);
+  // 置換関数形式を使う(REQ-033)。第2引数を文字列テンプレートで渡すと、値の中に
+  // "$&"/"$'" 等の特殊パターンが含まれる場合に置換結果が壊れるため
+  // (新規キー挿入側も同じ理由で関数形式にしている)。
+  if (re.test(text)) return text.replace(re, (m, p1) => p1 + encoded);
+  return text.replace(/\{/, (m) => `${m}\n  "${key}": ${encoded},`);
+}
+
+// ---- 配信/チャンネルURLの検証(REQ-031) ----
+
+/**
+ * 配信/チャンネルURLを検証・正規化する。
+ * trim → スキーム無しなら https:// を前置 → URLパース(失敗はnull)
+ * → https 以外は null → hostname が youtube.com/youtu.be/twitch.tv と完全一致、
+ * または .youtube.com/.twitch.tv で終わる場合のみ正規化済みURL文字列を返す。それ以外は null。
+ * (scripts/lib.mjs の同名関数と同一ロジック。用途がブラウザ側/Node側で分かれるため複製している)
+ */
+export function normalizeStreamUrl(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const tryParse = (s) => {
+    try {
+      return new URL(s);
+    } catch {
+      return null;
+    }
+  };
+
+  // 既にスキームがあればそのまま解釈する(javascript: 等の危険なスキームを
+  // https:// 前置で誤って通してしまわないため)。無ければ https:// を補う。
+  const url = tryParse(trimmed) ?? tryParse(`https://${trimmed}`);
+  if (!url) return null;
+  if (url.protocol !== 'https:') return null;
+
+  const host = url.hostname;
+  const allowed =
+    host === 'youtube.com' ||
+    host === 'youtu.be' ||
+    host === 'twitch.tv' ||
+    host.endsWith('.youtube.com') ||
+    host.endsWith('.twitch.tv');
+  if (!allowed) return null;
+
+  return url.toString();
 }
 
 // ---- base64 (GitHub Contents API) ----

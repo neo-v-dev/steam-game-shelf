@@ -95,23 +95,79 @@ export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) 
   };
 }
 
+// ---- 配信/チャンネルURLの検証(REQ-031) ----
+
+/**
+ * 配信/チャンネルURLを検証・正規化する。
+ * trim → スキーム無しなら https:// を前置 → URLパース(失敗はnull)
+ * → https 以外は null → hostname が youtube.com/youtu.be/twitch.tv と完全一致、
+ * または .youtube.com/.twitch.tv で終わる場合のみ正規化済みURL文字列を返す。それ以外は null。
+ * (site/admin-core.mjs の同名関数と同一ロジック。用途がブラウザ側/Node側で分かれるため複製している)
+ */
+export function normalizeStreamUrl(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const tryParse = (s) => {
+    try {
+      return new URL(s);
+    } catch {
+      return null;
+    }
+  };
+
+  // 既にスキームがあればそのまま解釈する(javascript: 等の危険なスキームを
+  // https:// 前置で誤って通してしまわないため)。無ければ https:// を補う。
+  const url = tryParse(trimmed) ?? tryParse(`https://${trimmed}`);
+  if (!url) return null;
+  if (url.protocol !== 'https:') return null;
+
+  const host = url.hostname;
+  const allowed =
+    host === 'youtube.com' ||
+    host === 'youtu.be' ||
+    host === 'twitch.tv' ||
+    host.endsWith('.youtube.com') ||
+    host.endsWith('.twitch.tv');
+  if (!allowed) return null;
+
+  return url.toString();
+}
+
 /**
  * カタログと設定から、サイトが読み込む公開用データを組み立てる。
  * 非表示ゲームはここで完全に除外する(公開リポジトリ・公開サイトには一切含めない)。
+ * stream_url / channel_url は normalizeStreamUrl で検証し、許可外は出力しない(REQ-031)。
+ * excluded に配列を渡すと、除外したゲームの appid/name/field を積む
+ * (呼び出し側の scripts/build.mjs が警告ログを出すために使う)。
  */
-export function buildPublicData(catalog, settings, generatedAt) {
+export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
     .map(({ visible, name_ja, played, stream_url, show_playtime, image, ...g }) => {
       // デフォルトと異なる値のみ公開データに含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
       if (played) g.played = true;
-      if (stream_url) g.stream_url = stream_url;
+      if (stream_url) {
+        const normalized = normalizeStreamUrl(stream_url);
+        if (normalized) {
+          g.stream_url = normalized;
+        } else {
+          excluded.push({ appid: g.appid, name: g.name, field: 'stream_url' });
+        }
+      }
       if (show_playtime === false) g.show_playtime = false;
       // image は取得できた場合(truthy)のみ出力する(null=取得試行済みだが無し、は出力しない, REQ-025)
       if (image) g.image = image;
       return g;
     });
+
+  const channelUrl = normalizeStreamUrl(settings.channel_url);
+  if (settings.channel_url && !channelUrl) {
+    excluded.push({ field: 'channel_url' });
+  }
+
   return {
     generated_at: generatedAt,
     fetched_at: catalog?.fetched_at ?? null,
@@ -123,7 +179,7 @@ export function buildPublicData(catalog, settings, generatedAt) {
       show_playtime: settings.show_playtime !== false,
       show_played: settings.show_played !== false,
       show_last_played: settings.show_last_played !== false,
-      channel_url: settings.channel_url || '',
+      channel_url: channelUrl || '',
     },
     games: visibleGames,
   };

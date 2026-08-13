@@ -3,7 +3,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeCatalog, buildPublicData, parseJsonc, fetchAppInfo, fetchOwnedGames } from '../scripts/lib.mjs';
+import {
+  mergeCatalog,
+  buildPublicData,
+  parseJsonc,
+  fetchAppInfo,
+  fetchOwnedGames,
+  normalizeStreamUrl,
+} from '../scripts/lib.mjs';
 
 // ---- fetchOwnedGames ----
 
@@ -97,6 +104,31 @@ test('mergeCatalog: 名前順(ロケール "en")でソートされる', () => {
   assert.deepEqual(games.map((g) => g.appid), [2, 1]);
 });
 
+// ---- normalizeStreamUrl(REQ-031, U1) ----
+
+test('normalizeStreamUrl U1: 許可されるURL(YouTube/Twitchとそのサブドメイン、スキーム補完含む)', () => {
+  assert.equal(
+    normalizeStreamUrl('https://www.youtube.com/watch?v=x'),
+    'https://www.youtube.com/watch?v=x'
+  );
+  assert.equal(normalizeStreamUrl('https://youtu.be/x'), 'https://youtu.be/x');
+  assert.equal(normalizeStreamUrl('https://www.twitch.tv/x'), 'https://www.twitch.tv/x');
+  assert.equal(normalizeStreamUrl('https://clips.twitch.tv/x'), 'https://clips.twitch.tv/x');
+  // スキーム無しは https:// を補って許可(U1)
+  assert.equal(normalizeStreamUrl('youtube.com/@ch'), 'https://youtube.com/@ch');
+});
+
+test('normalizeStreamUrl U1: 拒否されるURL(許可外ドメイン・危険スキーム・なりすましホスト・明示的http・空文字)', () => {
+  assert.equal(normalizeStreamUrl('https://evil.com/x'), null);
+  assert.equal(normalizeStreamUrl('javascript:alert(1)'), null);
+  // youtube.com のサブドメインに見えるが実際は evil.com のサブドメイン(なりすまし)
+  assert.equal(normalizeStreamUrl('https://youtube.com.evil.com/x'), null);
+  // 明示的に http: を指定した場合は https:// への補完対象にせず、そのまま拒否する
+  assert.equal(normalizeStreamUrl('http://www.youtube.com/x'), null);
+  assert.equal(normalizeStreamUrl(''), null);
+  assert.equal(normalizeStreamUrl('   '), null);
+});
+
 // ---- buildPublicData ----
 
 test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外・show_playtime falseのみ出力・image選択的出力)', () => {
@@ -122,7 +154,8 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         visible: true,
         played: true,
         show_playtime: false,
-        stream_url: 'https://example.com/y',
+        // REQ-031: 許可ドメイン(Twitch)である必要があるため example.com から差し替え
+        stream_url: 'https://www.twitch.tv/y',
         image: 'https://example.com/header.jpg', // truthy→出力(U3)
       },
       {
@@ -161,12 +194,46 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
   const b = out.games.find((g) => g.appid === 2);
   assert.equal(b.name_ja, 'ビー');
   assert.equal(b.played, true);
-  assert.equal(b.stream_url, 'https://example.com/y');
+  assert.equal(b.stream_url, 'https://www.twitch.tv/y');
   assert.equal(b.show_playtime, false);
   assert.equal(b.image, 'https://example.com/header.jpg', 'image が truthy の場合は出力する(U3)');
 
   const d = out.games.find((g) => g.appid === 4);
   assert.ok(!('image' in d), 'image キーが無い場合も出力しない(U3)');
+});
+
+test('buildPublicData U2: 許可外 stream_url は stream_url キーなしで出力し、excluded に積む(REQ-031)', () => {
+  const catalog = {
+    games: [
+      { appid: 1, name: 'Bad', playtime_forever: 0, visible: true, stream_url: 'https://evil.com/x' },
+      { appid: 2, name: 'Good', playtime_forever: 0, visible: true, stream_url: 'https://youtu.be/y' },
+    ],
+  };
+  const excluded = [];
+  const out = buildPublicData(catalog, { published: true }, 'now', excluded);
+  const bad = out.games.find((g) => g.appid === 1);
+  const good = out.games.find((g) => g.appid === 2);
+  assert.ok(!('stream_url' in bad), '許可外の stream_url はキーごと出力しない');
+  assert.equal(good.stream_url, 'https://youtu.be/y');
+  assert.deepEqual(
+    excluded.filter((e) => e.field === 'stream_url'),
+    [{ appid: 1, name: 'Bad', field: 'stream_url' }]
+  );
+});
+
+test('buildPublicData U2: 許可外 channel_url は site.channel_url が空文字になり、excluded に積む(REQ-031)', () => {
+  const excluded = [];
+  const out = buildPublicData(
+    { games: [] },
+    { published: true, channel_url: 'https://evil.com/chan' },
+    'now',
+    excluded
+  );
+  assert.equal(out.site.channel_url, '');
+  assert.deepEqual(
+    excluded.filter((e) => e.field === 'channel_url'),
+    [{ field: 'channel_url' }]
+  );
 });
 
 test('buildPublicData: settings.show_played が site.show_played に反映される(T6)', () => {
@@ -187,15 +254,17 @@ test('buildPublicData: settings.show_played が site.show_played に反映され
 });
 
 test('buildPublicData: published / site 設定を正しく組み立てる', () => {
+  // channel_url は REQ-031 の許可ドメイン(YouTube/Twitch)である必要があるため、
+  // このテストの本来の関心(site.* の組み立て)を保ったまま許可URLに差し替えている。
   const out = buildPublicData(
     { games: [] },
-    { published: false, site_title: 'My Shelf', default_lang: 'en', channel_url: 'https://x' },
+    { published: false, site_title: 'My Shelf', default_lang: 'en', channel_url: 'https://www.twitch.tv/x' },
     '2026-01-01T00:00:00Z'
   );
   assert.equal(out.published, false);
   assert.equal(out.site.title, 'My Shelf');
   assert.equal(out.site.default_lang, 'en');
-  assert.equal(out.site.channel_url, 'https://x');
+  assert.equal(out.site.channel_url, 'https://www.twitch.tv/x');
   assert.equal(out.generated_at, '2026-01-01T00:00:00Z');
 });
 

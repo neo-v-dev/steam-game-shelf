@@ -17,7 +17,19 @@ const catalog = existsSync(catalogPath)
   ? JSON.parse(readFileSync(catalogPath, 'utf8'))
   : null;
 
-const data = buildPublicData(catalog, settings, new Date().toISOString());
+// 許可外の stream_url / channel_url は buildPublicData 内で出力から除外される。
+// ここでは除外があれば警告ログを出す(REQ-031)。
+const excluded = [];
+const data = buildPublicData(catalog, settings, new Date().toISOString(), excluded);
+for (const e of excluded) {
+  const target =
+    e.field === 'channel_url'
+      ? 'サイト設定の channel_url'
+      : `appid=${e.appid}${e.name ? `(${e.name})` : ''} の stream_url`;
+  console.warn(
+    `警告: ${target} が許可外のURL(YouTube/Twitchのみ許可)のため、公開データから除外しました。`
+  );
+}
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(data, null, 2) + '\n');

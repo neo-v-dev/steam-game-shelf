@@ -4,7 +4,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyToken, setJsoncValue, parseJsonc, actionsUrl } from '../site/admin-core.mjs';
+import {
+  verifyToken,
+  setJsoncValue,
+  parseJsonc,
+  actionsUrl,
+  normalizeStreamUrl,
+} from '../site/admin-core.mjs';
 
 // 呼び出し順にレスポンスを返す簡易モック fetch
 function fakeFetch(responses) {
@@ -117,6 +123,42 @@ test('setJsoncValue T7c: 文字列値の中の "//"(URL)を壊さない', () => 
   const out2 = setJsoncValue(text2, 'b', 2);
   assert.equal(parseJsonc(out2).a, 'https://example.com/x');
   assert.equal(parseJsonc(out2).b, 2);
+});
+
+// ---- normalizeStreamUrl(REQ-031, U1) ----
+// scripts/lib.mjs 側と同一ロジックの複製。両実装をそれぞれユニットテストする。
+
+test('normalizeStreamUrl U1: 許可されるURL(YouTube/Twitchとそのサブドメイン、スキーム補完含む)', () => {
+  assert.equal(
+    normalizeStreamUrl('https://www.youtube.com/watch?v=x'),
+    'https://www.youtube.com/watch?v=x'
+  );
+  assert.equal(normalizeStreamUrl('https://youtu.be/x'), 'https://youtu.be/x');
+  assert.equal(normalizeStreamUrl('https://www.twitch.tv/x'), 'https://www.twitch.tv/x');
+  assert.equal(normalizeStreamUrl('https://clips.twitch.tv/x'), 'https://clips.twitch.tv/x');
+  assert.equal(normalizeStreamUrl('youtube.com/@ch'), 'https://youtube.com/@ch');
+});
+
+test('normalizeStreamUrl U1: 拒否されるURL(許可外ドメイン・危険スキーム・なりすましホスト・明示的http・空文字)', () => {
+  assert.equal(normalizeStreamUrl('https://evil.com/x'), null);
+  assert.equal(normalizeStreamUrl('javascript:alert(1)'), null);
+  assert.equal(normalizeStreamUrl('https://youtube.com.evil.com/x'), null);
+  assert.equal(normalizeStreamUrl('http://www.youtube.com/x'), null);
+  assert.equal(normalizeStreamUrl(''), null);
+  assert.equal(normalizeStreamUrl('   '), null);
+});
+
+// ---- setJsoncValue: $&/$' を含む値(REQ-033, U3) ----
+
+test("setJsoncValue U3: 値に $& や $' を含んでいても文字どおり書き込まれる(置換パターンとして解釈されない)", () => {
+  const text = '{\n  "site_title": "Foo"\n}\n';
+  const out = setJsoncValue(text, 'site_title', "weird $& and $' value");
+  assert.equal(parseJsonc(out).site_title, "weird $& and $' value");
+
+  // 新規キー挿入側(先頭挿入パス)でも同様に確認する
+  const text2 = '{\n  "published": false\n}\n';
+  const out2 = setJsoncValue(text2, 'channel_url', "https://example.com/$&$'");
+  assert.equal(parseJsonc(out2).channel_url, "https://example.com/$&$'");
 });
 
 // ---- actionsUrl (U2) ----

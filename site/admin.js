@@ -13,6 +13,7 @@ import {
   decodeContent,
   verifyToken,
   actionsUrl,
+  normalizeStreamUrl,
 } from './admin-core.mjs';
 
 const I18N = {
@@ -78,6 +79,9 @@ const I18N = {
     err_save: (msg) => `保存に失敗しました: ${msg}`,
     err_conflict:
       '保存中に他の更新(自動更新など)と競合しました。もう一度「読み込む」からやり直してください。',
+    // REQ-031: 許可外URL(stream_url / channel_url)を保存しようとしたときのエラー
+    channel_url_name: 'チャンネルURL',
+    err_bad_url: (targets) => `YouTube / Twitch のURLのみ設定できます: ${targets.join('、')}`,
     hours: (h) => `${h} 時間`,
   },
   en: {
@@ -142,6 +146,9 @@ const I18N = {
     err_save: (msg) => `Failed to save: ${msg}`,
     err_conflict:
       'Your save conflicted with another update (e.g. the daily refresh). Please load again and retry.',
+    // REQ-031: shown when trying to save a stream_url / channel_url outside the allowed domains
+    channel_url_name: 'channel URL',
+    err_bad_url: (targets) => `Only YouTube / Twitch URLs are allowed: ${targets.join(', ')}`,
     hours: (h) => `${h} hrs`,
   },
 };
@@ -317,19 +324,47 @@ function collectSettingsChanges() {
 }
 
 async function save() {
+  setStatus('');
+  // 保存前にURL検証(REQ-031)。デモモードでもここまでは実行し、
+  // 検証メッセージの動作を試せるようにする(実際の保存はDEMO分岐でスキップされる)。
+  const badTargets = [];
+  for (const g of state.games) {
+    // 空の配信URLはキーごと削除してカタログを汚さない
+    if (typeof g.stream_url === 'string') g.stream_url = g.stream_url.trim();
+    if (!g.stream_url) {
+      delete g.stream_url;
+      continue;
+    }
+    const normalized = normalizeStreamUrl(g.stream_url);
+    if (normalized) {
+      g.stream_url = normalized;
+    } else {
+      badTargets.push(displayName(g));
+    }
+  }
+  const channelInput = $('set-channel-url').value.trim();
+  if (channelInput) {
+    const normalizedChannel = normalizeStreamUrl(channelInput);
+    if (normalizedChannel) {
+      $('set-channel-url').value = normalizedChannel;
+    } else {
+      badTargets.push(t().channel_url_name);
+    }
+  }
+  if (badTargets.length > 0) {
+    setStatus(t().err_bad_url(badTargets), true);
+    return;
+  }
+  // 正規化結果(https補完済み)を表示にも反映する
+  if (state.loaded) renderGames();
+
   if (DEMO) {
     setStatus(t().demo_notice);
     return;
   }
   $('save-button').disabled = true;
   $('save-button').textContent = t().saving;
-  setStatus('');
   try {
-    // 空の配信URLはキーごと削除してカタログを汚さない
-    for (const g of state.games) {
-      if (typeof g.stream_url === 'string') g.stream_url = g.stream_url.trim();
-      if (!g.stream_url) delete g.stream_url;
-    }
     const catalogText =
       JSON.stringify({ ...state.catalogRaw, games: state.games }, null, 2) + '\n';
     state.catalogSha = await putFile(
