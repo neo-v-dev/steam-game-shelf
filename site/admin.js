@@ -51,6 +51,7 @@ const I18N = {
     sort_last_played: '最近プレイした順',
     sort_developer: '開発元順',
     sort_publisher: '販売元順',
+    sort_release_date: '発売日順',
     counts: (visible, total) => `${total} 本中 ${visible} 本を表示 / ${total - visible} 本を非表示`,
     counts_cards_hint: 'カードをクリックで表示/非表示を切り替え',
     tag_played: 'プレイ済み',
@@ -59,6 +60,7 @@ const I18N = {
     playtime_none: '未プレイ',
     last_played: (d) => `最終プレイ: ${d}`,
     developer: (d) => `開発元: ${d}`,
+    release_date: (d) => `発売日: ${d}`,
     stream_placeholder: '配信/動画URL(任意)',
     hidden_label: '非表示',
     label_published: 'サイトを公開する',
@@ -122,6 +124,7 @@ const I18N = {
     sort_last_played: 'Recently played',
     sort_developer: 'Developer',
     sort_publisher: 'Publisher',
+    sort_release_date: 'Release date',
     counts: (visible, total) => `${visible} of ${total} shown / ${total - visible} hidden`,
     counts_cards_hint: 'Click a card to toggle visibility.',
     tag_played: 'Played',
@@ -130,6 +133,7 @@ const I18N = {
     playtime_none: 'Not played',
     last_played: (d) => `Last played: ${d}`,
     developer: (d) => `Developer: ${d}`,
+    release_date: (d) => `Released: ${d}`,
     stream_placeholder: 'Stream/video URL (optional)',
     hidden_label: 'Hidden',
     label_published: 'Publish the site',
@@ -174,7 +178,10 @@ const state = {
   settingsSha: null,
   published: false,
   query: '',
-  sort: 'name',         // 'name' | 'playtime' | 'last_played'(REQ-023、初期は名前順)
+  sort: 'name',         // 'name' | 'playtime' | 'last_played' | 'release_date' | 'developer' | 'publisher'(REQ-023、初期は名前順)
+  // developer/publisher ソート時の同値タイブレークに使う二次ソート(REQ-037)。
+  // ソート変更時、新しい値が developer/publisher 以外ならここも追従して更新する。
+  sortSecondary: 'name',
   loaded: false,
 };
 
@@ -416,12 +423,15 @@ async function save() {
 function loadDemo() {
   state.catalogRaw = { fetched_at: new Date().toISOString() };
   state.games = [
-    { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true, developer: 'Valve', publisher: 'Valve' },
-    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false, developer: 'Valve', publisher: 'Valve' },
-    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo', image: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281', developer: 'FromSoftware, Inc.', publisher: 'Bandai Namco Entertainment' },
-    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true, developer: 'Larian Studios', publisher: 'Larian Studios' },
-    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true, developer: 'ConcernedApe', publisher: 'ConcernedApe' },
-    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true, developer: 'Supergiant Games', publisher: 'Supergiant Games' },
+    { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true, developer: 'Valve', publisher: 'Valve', release_date: '2013年7月10日', release_ts: 1373414400 },
+    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false, developer: 'Valve', publisher: 'Valve', release_date: '2023年9月27日', release_ts: 1695772800 },
+    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo', image: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281', developer: 'FromSoftware, Inc.', publisher: 'Bandai Namco Entertainment', release_date: '2022年2月24日', release_ts: 1645660800 },
+    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true, developer: 'Larian Studios', publisher: 'Larian Studios', release_date: '2023年8月4日', release_ts: 1691107200 },
+    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true, developer: 'ConcernedApe', publisher: 'ConcernedApe', release_date: '2016年2月26日', release_ts: 1456444800 },
+    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true, developer: 'Supergiant Games', publisher: 'Supergiant Games', release_date: '2020年9月17日', release_ts: 1600300800 },
+    // REQ-037検証用: developer/publisher が同じ Valve のゲームを複数(発売日順で並びが変わることを確認するため)
+    { appid: 620, name: 'Portal 2', playtime_forever: 0, rtime_last_played: 0, visible: true, played: false, show_playtime: true, developer: 'Valve', publisher: 'Valve', release_date: '2011年4月19日', release_ts: 1303171200 },
+    { appid: 220, name: 'Half-Life 2', playtime_forever: 890, rtime_last_played: 1745020800, visible: true, played: true, show_playtime: true, developer: 'Valve', publisher: 'Valve', release_date: '2004年11月16日', release_ts: 1100563200 },
     // 画像フォールバック確認用(存在しない appid): header/header_japanese/capsule すべて404→プレースホルダー(REQ-021)
     { appid: 99999999, name: 'Unknown Game (no artwork)', playtime_forever: 0, rtime_last_played: 0, visible: true, played: false, show_playtime: true },
   ];
@@ -481,15 +491,53 @@ function formatLastPlayed(epochSeconds) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// 発売日の表示整形(REQ-036)。release_ts があれば閲覧者(操作者)ロケールで整形、無ければ原文字列。
+function formatReleaseDate(g) {
+  if (g.release_ts) {
+    const locale = state.lang === 'ja' ? 'ja-JP' : 'en-US';
+    return new Date(g.release_ts * 1000).toLocaleDateString(locale);
+  }
+  return g.release_date;
+}
+
+// 発売日順の比較関数(REQ-036)。release_ts 降順、値なしは末尾。
+function compareByReleaseTs(a, b) {
+  const av = a.release_ts;
+  const bv = b.release_ts;
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1;
+  if (bv == null) return -1;
+  return bv - av;
+}
+
+// state.sortSecondary に対応する比較関数を返す(REQ-037)。
+// developer/publisher は二次ソートの値になり得ない(sortSecondary 更新時に除外されるため)。
+// 未設定・想定外の値の場合は名前順にフォールバックする。
+function secondaryCompare(locale) {
+  switch (state.sortSecondary) {
+    case 'playtime':
+      return (a, b) => b.playtime_forever - a.playtime_forever;
+    case 'last_played':
+      return (a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0);
+    case 'release_date':
+      return compareByReleaseTs;
+    default:
+      return (a, b) => displayName(a).localeCompare(displayName(b), locale);
+  }
+}
+
 // developer/publisher などの任意項目で並べる比較関数(REQ-035)。値が無いゲームは常に末尾。
+// 同値(開発元/販売元が同じ、または両方値なし)の場合は sortSecondary の比較関数で決着させる(REQ-037)。
 function compareByField(field, locale) {
+  const secondary = secondaryCompare(locale);
   return (a, b) => {
     const av = a[field] || '';
     const bv = b[field] || '';
-    if (!av && !bv) return 0;
+    if (!av && !bv) return secondary(a, b);
     if (!av) return 1;
     if (!bv) return -1;
-    return av.localeCompare(bv, locale);
+    const primary = av.localeCompare(bv, locale);
+    return primary !== 0 ? primary : secondary(a, b);
   };
 }
 
@@ -508,6 +556,9 @@ function filteredGames() {
       break;
     case 'last_played':
       games.sort((a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0));
+      break;
+    case 'release_date':
+      games.sort(compareByReleaseTs);
       break;
     case 'developer':
       games.sort(compareByField('developer', locale));
@@ -622,6 +673,7 @@ function renderList() {
     const metaParts = [];
     if (g.playtime_forever > 0) metaParts.push(t().hours(Math.round(g.playtime_forever / 6) / 10));
     if (g.rtime_last_played > 0) metaParts.push(t().last_played(formatLastPlayed(g.rtime_last_played)));
+    if (g.release_date) metaParts.push(t().release_date(formatReleaseDate(g)));
     if (g.developer) metaParts.push(t().developer(g.developer));
     metaParts.push(g.appid);
     meta.textContent = metaParts.join(' · ');
@@ -683,6 +735,11 @@ function renderCards() {
       const lastPlayedSpan = document.createElement('span');
       lastPlayedSpan.textContent = t().last_played(formatLastPlayed(g.rtime_last_played));
       meta.appendChild(lastPlayedSpan);
+    }
+    if (g.release_date) {
+      const releaseDateSpan = document.createElement('span');
+      releaseDateSpan.textContent = t().release_date(formatReleaseDate(g));
+      meta.appendChild(releaseDateSpan);
     }
     if (g.developer) {
       const developerSpan = document.createElement('span');
@@ -776,6 +833,7 @@ function render() {
     ['name', tr.sort_name],
     ['playtime', tr.sort_playtime],
     ['last_played', tr.sort_last_played],
+    ['release_date', tr.sort_release_date],
     ['developer', tr.sort_developer],
     ['publisher', tr.sort_publisher],
   ];
@@ -827,7 +885,10 @@ function init() {
     renderGames();
   });
   $('admin-sort').addEventListener('change', (e) => {
-    state.sort = e.target.value;
+    const value = e.target.value;
+    // developer/publisher 以外への変更時は二次ソートも追従させる(REQ-037)
+    if (value !== 'developer' && value !== 'publisher') state.sortSecondary = value;
+    state.sort = value;
     renderGames();
   });
   // 全体スイッチ変更時、対応するチップのロック状態を即時反映(REQ-018)

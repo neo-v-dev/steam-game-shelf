@@ -8,6 +8,7 @@ const I18N = {
     sort_last_played: '最近プレイした順',
     sort_developer: '開発元順',
     sort_publisher: '販売元順',
+    sort_release_date: '発売日順',
     filter_all: 'すべて',
     filter_played: 'プレイ済み',
     filter_unplayed: '未プレイ',
@@ -20,6 +21,7 @@ const I18N = {
     playtime_none: '未プレイ',
     last_played: (d) => `最終プレイ: ${d}`,
     developer: (d) => `開発元: ${d}`,
+    release_date: (d) => `発売日: ${d}`,
     updated: (d) => `最終更新: ${d}`,
     unpublished:
       'このサイトはまだ準備中です。(管理者向け: config/settings.jsonc の "published" を true にすると公開されます)',
@@ -35,6 +37,7 @@ const I18N = {
     sort_last_played: 'Recently played',
     sort_developer: 'Developer',
     sort_publisher: 'Publisher',
+    sort_release_date: 'Release date',
     filter_all: 'All',
     filter_played: 'Played',
     filter_unplayed: 'Not played',
@@ -47,6 +50,7 @@ const I18N = {
     playtime_none: 'Not played',
     last_played: (d) => `Last played: ${d}`,
     developer: (d) => `Developer: ${d}`,
+    release_date: (d) => `Released: ${d}`,
     updated: (d) => `Last updated: ${d}`,
     unpublished:
       'This site is not published yet. (For the owner: set "published" to true in config/settings.jsonc)',
@@ -62,6 +66,9 @@ const state = {
   data: null,
   query: '',
   sort: 'name',
+  // developer/publisher ソート時の同値タイブレークに使う二次ソート(REQ-037)。
+  // ソート変更時、新しい値が developer/publisher 以外ならここも追従して更新する。
+  sortSecondary: 'name',
   filter: 'all',
 };
 
@@ -102,15 +109,44 @@ function formatDate(epochSeconds) {
   return new Date(epochSeconds * 1000).toLocaleDateString(locale);
 }
 
+// 発売日順の比較関数(REQ-036)。release_ts 降順、値なしは末尾。
+function compareByReleaseTs(a, b) {
+  const av = a.release_ts;
+  const bv = b.release_ts;
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1;
+  if (bv == null) return -1;
+  return bv - av;
+}
+
+// state.sortSecondary に対応する比較関数を返す(REQ-037)。
+// developer/publisher は二次ソートの値になり得ない(sortSecondary 更新時に除外されるため)。
+// 未設定・想定外の値の場合は名前順にフォールバックする。
+function secondaryCompare(locale) {
+  switch (state.sortSecondary) {
+    case 'playtime':
+      return (a, b) => b.playtime_forever - a.playtime_forever;
+    case 'last_played':
+      return (a, b) => b.rtime_last_played - a.rtime_last_played;
+    case 'release_date':
+      return compareByReleaseTs;
+    default:
+      return (a, b) => displayName(a).localeCompare(displayName(b), locale);
+  }
+}
+
 // developer/publisher などの任意項目で並べる比較関数(REQ-035)。値が無いゲームは常に末尾。
+// 同値(開発元/販売元が同じ、または両方値なし)の場合は sortSecondary の比較関数で決着させる(REQ-037)。
 function compareByField(field, locale) {
+  const secondary = secondaryCompare(locale);
   return (a, b) => {
     const av = a[field] || '';
     const bv = b[field] || '';
-    if (!av && !bv) return 0;
+    if (!av && !bv) return secondary(a, b);
     if (!av) return 1;
     if (!bv) return -1;
-    return av.localeCompare(bv, locale);
+    const primary = av.localeCompare(bv, locale);
+    return primary !== 0 ? primary : secondary(a, b);
   };
 }
 
@@ -130,6 +166,9 @@ function sortedFilteredGames() {
       break;
     case 'last_played':
       games.sort((a, b) => b.rtime_last_played - a.rtime_last_played);
+      break;
+    case 'release_date':
+      games.sort(compareByReleaseTs);
       break;
     case 'developer':
       games.sort(compareByField('developer', locale));
@@ -195,6 +234,8 @@ function render() {
   const sortOptions = [['name', tr.sort_name]];
   if (data.site.show_playtime !== false) sortOptions.push(['playtime', tr.sort_playtime]);
   if (data.site.show_last_played !== false) sortOptions.push(['last_played', tr.sort_last_played]);
+  // 発売日は表示にスイッチが無いため、ソート選択肢も除外対象にしない(REQ-036)
+  sortOptions.push(['release_date', tr.sort_release_date]);
   // 開発元/販売元ソートは show_developer OFF なら選択肢から除外する(REQ-029 と同作法、REQ-035)
   if (data.site.show_developer !== false) {
     sortOptions.push(['developer', tr.sort_developer]);
@@ -304,6 +345,12 @@ function render() {
       span.textContent = t().last_played(formatDate(g.rtime_last_played));
       meta.appendChild(span);
     }
+    // 発売日は表示スイッチが無く、データがあれば常時表示する(REQ-036)
+    if (g.release_date) {
+      const span = document.createElement('span');
+      span.textContent = t().release_date(g.release_ts ? formatDate(g.release_ts) : g.release_date);
+      meta.appendChild(span);
+    }
     if (data.site.show_developer !== false && g.developer) {
       const span = document.createElement('span');
       span.textContent = t().developer(g.developer);
@@ -346,7 +393,10 @@ async function main() {
     render();
   });
   $('sort').addEventListener('change', (e) => {
-    state.sort = e.target.value;
+    const value = e.target.value;
+    // developer/publisher 以外への変更時は二次ソートも追従させる(REQ-037)
+    if (value !== 'developer' && value !== 'publisher') state.sortSecondary = value;
+    state.sort = value;
     render();
   });
   $('filter').addEventListener('change', (e) => {

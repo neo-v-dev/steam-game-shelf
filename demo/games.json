@@ -20,7 +20,9 @@
       "rtime_last_played": 1753574400,
       "played": true,
       "developer": "Valve",
-      "publisher": "Valve"
+      "publisher": "Valve",
+      "release_date": "2013年7月10日",
+      "release_ts": 1373414400
     },
     {
       "appid": 730,
@@ -30,7 +32,9 @@
       "played": true,
       "show_playtime": false,
       "developer": "Valve",
-      "publisher": "Valve"
+      "publisher": "Valve",
+      "release_date": "2023年9月27日",
+      "release_ts": 1695772800
     },
     {
       "appid": 1245620,
@@ -42,7 +46,9 @@
       "stream_url": "https://www.youtube.com/watch?v=demo-elden-ring",
       "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281",
       "developer": "FromSoftware Inc.",
-      "publisher": "Bandai Namco Entertainment"
+      "publisher": "Bandai Namco Entertainment",
+      "release_date": "2022年2月24日",
+      "release_ts": 1645660800
     },
     {
       "appid": 1086940,
@@ -51,7 +57,9 @@
       "playtime_forever": 6000,
       "rtime_last_played": 1751328000,
       "developer": "Larian Studios",
-      "publisher": "Larian Studios"
+      "publisher": "Larian Studios",
+      "release_date": "2023年8月4日",
+      "release_ts": 1691107200
     },
     {
       "appid": 1145360,
@@ -62,7 +70,9 @@
       "played": true,
       "stream_url": "https://www.youtube.com/watch?v=demo-hades",
       "developer": "Supergiant Games",
-      "publisher": "Supergiant Games"
+      "publisher": "Supergiant Games",
+      "release_date": "2020年9月17日",
+      "release_ts": 1600300800
     },
     {
       "appid": 413150,
@@ -71,7 +81,9 @@
       "playtime_forever": 200,
       "rtime_last_played": 1748736000,
       "developer": "ConcernedApe",
-      "publisher": "ConcernedApe"
+      "publisher": "ConcernedApe",
+      "release_date": "2016年2月26日",
+      "release_ts": 1456444800
     },
     {
       "appid": 620,
@@ -79,7 +91,19 @@
       "playtime_forever": 0,
       "rtime_last_played": 0,
       "developer": "Valve",
-      "publisher": "Valve"
+      "publisher": "Valve",
+      "release_date": "2011年4月19日",
+      "release_ts": 1303171200
+    },
+    {
+      "appid": 220,
+      "name": "Half-Life 2",
+      "playtime_forever": 890,
+      "rtime_last_played": 1745020800,
+      "developer": "Valve",
+      "publisher": "Valve",
+      "release_date": "2004年11月16日",
+      "release_ts": 1100563200
     },
     {
       "appid": 367520,
@@ -89,7 +113,9 @@
       "rtime_last_played": 1750291200,
       "played": true,
       "developer": "Team Cherry",
-      "publisher": "Team Cherry"
+      "publisher": "Team Cherry",
+      "release_date": "2017年2月24日",
+      "release_ts": 1487894400
     },
     {
       "appid": 99999999,

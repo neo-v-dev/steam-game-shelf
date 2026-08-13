@@ -64,6 +64,11 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
       // developer/publisher も同様にキーの有無で取得試行済みかを判定する(REQ-035)
       if (prev && 'developer' in prev) merged.developer = prev.developer;
       if (prev && 'publisher' in prev) merged.publisher = prev.publisher;
+      // release_date/release_ts も同様(REQ-036)。常に対で設定されるため release_date の有無だけで判定する
+      if (prev && 'release_date' in prev) {
+        merged.release_date = prev.release_date;
+        merged.release_ts = prev.release_ts;
+      }
       // 配信リンク(管理ページで設定)も維持する
       if (prev?.stream_url) merged.stream_url = prev.stream_url;
       return merged;
@@ -74,16 +79,19 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
 }
 
 /**
- * ストア API からローカライズされたゲーム名・ヘッダー画像URL・開発元/販売元を取得する(REQ-025, REQ-035)。
+ * ストア API からローカライズされたゲーム名・ヘッダー画像URL・開発元/販売元・発売日を取得する
+ * (REQ-025, REQ-035, REQ-036)。
  * 新しめのタイトルは新CDN(shared.akamai.steamstatic.com)のハッシュ付きURLが正式パスとなり、
  * appid から推測できないため、appdetails の header_image を正として使う。
  * developer/publisher はそれぞれ developers/publishers 配列の先頭社を採用し、無ければ null。
- * 見つからない場合は { name: null, image: null, developer: null, publisher: null }
+ * releaseDate は release_date.date の原文字列(無ければ null)。coming_soon(四半期表記等)や
+ * 未発売のケースは parseReleaseDate 側で解析不能として null になる想定で、ここでは加工しない。
+ * 見つからない場合は { name: null, image: null, developer: null, publisher: null, releaseDate: null }
  * (=取得試行済みとしてキャッシュしてよい)。
  * レート制限(429)時は err.rateLimited = true の例外を投げる。
  */
 export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) {
-  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic,developers,publishers`;
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic,developers,publishers,release_date`;
   const res = await fetchImpl(url);
   if (res.status === 429 || res.status === 403) {
     const err = new Error(`appdetails rate limited (HTTP ${res.status})`);
@@ -93,13 +101,55 @@ export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) 
   if (!res.ok) throw new Error(`appdetails error: HTTP ${res.status}`);
   const data = await res.json();
   const entry = data?.[String(appid)];
-  if (!entry?.success) return { name: null, image: null, developer: null, publisher: null };
+  if (!entry?.success) {
+    return { name: null, image: null, developer: null, publisher: null, releaseDate: null };
+  }
   return {
     name: entry.data?.name ?? null,
     image: entry.data?.header_image ?? null,
     developer: entry.data?.developers?.[0] ?? null,
     publisher: entry.data?.publishers?.[0] ?? null,
+    releaseDate: entry.data?.release_date?.date ?? null,
   };
+}
+
+// ---- 発売日の解析(REQ-036) ----
+
+const RELEASE_MONTHS = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+/**
+ * appdetails の release_date.date(原文字列)を epoch 秒に変換する。
+ * 対応形式:「YYYY年M月D日」「D MMM, YYYY」「MMM D, YYYY」。
+ * それ以外(四半期表記の coming_soon、年のみ等の解析不能な文字列、null/undefined)は null。
+ * UTC 日付として解釈する(閲覧者ローカルタイムに依存させないため)。
+ */
+export function parseReleaseDate(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+
+  let m = s.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日$/);
+  if (m) {
+    return Math.floor(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 1000);
+  }
+
+  m = s.match(/^(\d{1,2}) ([A-Za-z]{3}), (\d{4})$/);
+  if (m) {
+    const month = RELEASE_MONTHS[m[2].toLowerCase()];
+    if (month === undefined) return null;
+    return Math.floor(Date.UTC(Number(m[3]), month, Number(m[1])) / 1000);
+  }
+
+  m = s.match(/^([A-Za-z]{3}) (\d{1,2}), (\d{4})$/);
+  if (m) {
+    const month = RELEASE_MONTHS[m[1].toLowerCase()];
+    if (month === undefined) return null;
+    return Math.floor(Date.UTC(Number(m[3]), month, Number(m[2])) / 1000);
+  }
+
+  return null;
 }
 
 // ---- 配信/チャンネルURLの検証(REQ-031) ----
@@ -155,7 +205,7 @@ export function normalizeStreamUrl(raw) {
 export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, name_ja, played, stream_url, show_playtime, image, developer, publisher, ...g }) => {
+    .map(({ visible, name_ja, played, stream_url, show_playtime, image, developer, publisher, release_date, release_ts, ...g }) => {
       // デフォルトと異なる値のみ公開データに含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
       if (played) g.played = true;
@@ -173,6 +223,9 @@ export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
       // developer/publisher も同様に取得できた場合のみ出力する(REQ-035)
       if (developer) g.developer = developer;
       if (publisher) g.publisher = publisher;
+      // release_date/release_ts も truthy の場合のみ出力する(REQ-036)
+      if (release_date) g.release_date = release_date;
+      if (release_ts) g.release_ts = release_ts;
       return g;
     });
 

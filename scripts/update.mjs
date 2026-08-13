@@ -10,6 +10,7 @@ import {
   fetchAppInfo,
   mergeCatalog,
   parseJsonc,
+  parseReleaseDate,
 } from './lib.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,20 +37,21 @@ const { games, newGames } = mergeCatalog(
   settings.default_visibility !== false
 );
 
-// 日本語ゲーム名 + ヘッダー画像URL + 開発元/販売元の差分取得(REQ-025で image、REQ-035で developer/publisher を追加)。
+// 日本語ゲーム名 + ヘッダー画像URL + 開発元/販売元 + 発売日の差分取得
+// (REQ-025で image、REQ-035で developer/publisher、REQ-036で release_date/release_ts を追加)。
 // ストア API はレート制限が厳しい(概ね 200 req/5min)ため、1回の実行で最大 150 件に抑え、
 // 未取得分は次回以降の実行で少しずつ埋める。取得結果(null 含む)はカタログにキャッシュされ、
-// name_ja / image / developer のキーがすべて既に存在するゲームは再取得しない。
+// name_ja / image / developer / release_date のキーがすべて既に存在するゲームは再取得しない。
 if (settings.fetch_japanese_names !== false) {
   const MAX_PER_RUN = 150;
   const WAIT_MS = 1500;
   const pending = games.filter(
-    (g) => !('name_ja' in g) || !('image' in g) || !('developer' in g)
+    (g) => !('name_ja' in g) || !('image' in g) || !('developer' in g) || !('release_date' in g)
   );
   const targets = pending.slice(0, MAX_PER_RUN);
   if (targets.length > 0) {
     console.log(
-      `日本語名・画像・開発元/販売元を取得中: ${targets.length} 件 (未取得 ${pending.length} 件)`
+      `日本語名・画像・開発元/販売元・発売日を取得中: ${targets.length} 件 (未取得 ${pending.length} 件)`
     );
     let fetched = 0;
     for (const g of targets) {
@@ -59,6 +61,8 @@ if (settings.fetch_japanese_names !== false) {
         g.image = info.image;
         g.developer = info.developer;
         g.publisher = info.publisher;
+        g.release_date = info.releaseDate;
+        g.release_ts = parseReleaseDate(info.releaseDate);
         fetched++;
       } catch (err) {
         if (err.rateLimited) {
@@ -70,7 +74,7 @@ if (settings.fetch_japanese_names !== false) {
       }
       await new Promise((r) => setTimeout(r, WAIT_MS));
     }
-    console.log(`日本語名・画像・開発元/販売元: ${fetched} 件取得 (残り ${pending.length - targets.length} 件は次回以降)`);
+    console.log(`日本語名・画像・開発元/販売元・発売日: ${fetched} 件取得 (残り ${pending.length - targets.length} 件は次回以降)`);
   }
 }
 

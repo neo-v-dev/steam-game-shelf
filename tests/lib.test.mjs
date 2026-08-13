@@ -10,6 +10,7 @@ import {
   fetchAppInfo,
   fetchOwnedGames,
   normalizeStreamUrl,
+  parseReleaseDate,
 } from '../scripts/lib.mjs';
 
 // ---- fetchOwnedGames ----
@@ -81,6 +82,36 @@ test('mergeCatalog: prev の developer/publisher が null(取得試行済みだ�
   assert.equal(games[0].publisher, null);
 });
 
+test('mergeCatalog REQ-036: prev の release_date/release_ts を引き継ぐ', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = {
+    games: [
+      { appid: 1, name: 'Game A', release_date: '2022年2月24日', release_ts: 1645660800 },
+    ],
+  };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.equal(games[0].release_date, '2022年2月24日');
+  assert.equal(games[0].release_ts, 1645660800);
+});
+
+test('mergeCatalog REQ-036: prev に release_date キーが無ければ引き継がない(次回更新での再取得対象になる)', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A' }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok(!('release_date' in games[0]));
+  assert.ok(!('release_ts' in games[0]));
+});
+
+test('mergeCatalog REQ-036: release_date が null(coming_soon/解析不能で取得試行済み)でもキーごと引き継ぐ', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A', release_date: null, release_ts: null }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok('release_date' in games[0]);
+  assert.equal(games[0].release_date, null);
+  assert.ok('release_ts' in games[0]);
+  assert.equal(games[0].release_ts, null);
+});
+
 test('mergeCatalog: prev に image キーが無ければ引き継がない(U2)', () => {
   const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
   const prev = { games: [{ appid: 1, name: 'Game A' }] };
@@ -108,6 +139,8 @@ test('mergeCatalog: 新規ゲームは defaultVisibility を適用し、played/s
   assert.ok(!('stream_url' in games[0]));
   assert.ok(!('developer' in games[0]));
   assert.ok(!('publisher' in games[0]));
+  assert.ok(!('release_date' in games[0]));
+  assert.ok(!('release_ts' in games[0]));
   assert.equal(newGames.length, 1);
   assert.equal(newGames[0].appid, 2);
 });
@@ -255,6 +288,29 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
   assert.ok(!('publisher' in d), 'publisher キーが無い場合も出力しない(REQ-035)');
 });
 
+test('buildPublicData REQ-036: release_date/release_ts は truthy の場合のみ出力する', () => {
+  const catalog = {
+    games: [
+      // release_date/release_ts あり(truthy)→ 出力
+      { appid: 1, name: 'A', playtime_forever: 0, visible: true, release_date: '2022年2月24日', release_ts: 1645660800 },
+      // release_date/release_ts が null(取得試行済みだが解析不能)→ 出力しない
+      { appid: 2, name: 'B', playtime_forever: 0, visible: true, release_date: null, release_ts: null },
+      // キー自体が無い → 出力しない
+      { appid: 3, name: 'C', playtime_forever: 0, visible: true },
+    ],
+  };
+  const out = buildPublicData(catalog, { published: true }, 'now');
+  const a = out.games.find((g) => g.appid === 1);
+  const b = out.games.find((g) => g.appid === 2);
+  const c = out.games.find((g) => g.appid === 3);
+  assert.equal(a.release_date, '2022年2月24日');
+  assert.equal(a.release_ts, 1645660800);
+  assert.ok(!('release_date' in b));
+  assert.ok(!('release_ts' in b));
+  assert.ok(!('release_date' in c));
+  assert.ok(!('release_ts' in c));
+});
+
 test('buildPublicData: settings.show_developer が site.show_developer に反映される(REQ-035)', () => {
   const catalog = { games: [] };
   const outUndefined = buildPublicData(catalog, { published: true }, 'now');
@@ -333,6 +389,40 @@ test('buildPublicData: published / site 設定を正しく組み立てる', () =
   assert.equal(out.generated_at, '2026-01-01T00:00:00Z');
 });
 
+// ---- parseReleaseDate(REQ-036) ----
+
+test('parseReleaseDate: 「YYYY年M月D日」形式を epoch 秒(UTC)に解析する', () => {
+  assert.equal(parseReleaseDate('2016年8月2日'), Date.UTC(2016, 7, 2) / 1000);
+  assert.equal(parseReleaseDate('2022年2月24日'), Date.UTC(2022, 1, 24) / 1000);
+});
+
+test('parseReleaseDate: 「D MMM, YYYY」形式を epoch 秒(UTC)に解析する', () => {
+  assert.equal(parseReleaseDate('2 Aug, 2016'), Date.UTC(2016, 7, 2) / 1000);
+  assert.equal(parseReleaseDate('23 Mar, 2022'), Date.UTC(2022, 2, 23) / 1000);
+});
+
+test('parseReleaseDate: 「MMM D, YYYY」形式を epoch 秒(UTC)に解析する', () => {
+  assert.equal(parseReleaseDate('Aug 2, 2016'), Date.UTC(2016, 7, 2) / 1000);
+});
+
+test('parseReleaseDate: 年のみの文字列は解析不能として null', () => {
+  assert.equal(parseReleaseDate('2016'), null);
+  assert.equal(parseReleaseDate('2016年'), null);
+});
+
+test('parseReleaseDate: coming_soon の四半期表記(実測フォーマット)は解析不能として null', () => {
+  // 実測: appdetails は未発売タイトルの release_date.date に四半期表記を返す(ja: 「2026年第3四半期」/ en: "Q3 2026")
+  assert.equal(parseReleaseDate('2026年第3四半期'), null);
+  assert.equal(parseReleaseDate('Q3 2026'), null);
+});
+
+test('parseReleaseDate: null/undefined/空文字/不正月名は null', () => {
+  assert.equal(parseReleaseDate(null), null);
+  assert.equal(parseReleaseDate(undefined), null);
+  assert.equal(parseReleaseDate(''), null);
+  assert.equal(parseReleaseDate('Xyz 2, 2016'), null);
+});
+
 // ---- parseJsonc ----
 
 test('parseJsonc: 行頭コメントは除去し、文字列内の // は保持する', () => {
@@ -351,7 +441,7 @@ test('parseJsonc: 行頭コメントは除去し、文字列内の // は保持�
 
 // ---- fetchAppInfo(REQ-025, REQ-035, U1) ----
 
-test('fetchAppInfo: 送信URLの filters に basic,developers,publishers が含まれる(REQ-035)', async () => {
+test('fetchAppInfo: 送信URLの filters に basic,developers,publishers,release_date が含まれる(REQ-035, REQ-036)', async () => {
   let requestedUrl = null;
   const fetchImpl = async (url) => {
     requestedUrl = url;
@@ -363,10 +453,10 @@ test('fetchAppInfo: 送信URLの filters に basic,developers,publishers が含�
   };
   await fetchAppInfo(1, 'japanese', fetchImpl);
   const params = new URL(requestedUrl).searchParams;
-  assert.equal(params.get('filters'), 'basic,developers,publishers');
+  assert.equal(params.get('filters'), 'basic,developers,publishers,release_date');
 });
 
-test('fetchAppInfo: 成功時は name/header_image/developers[0]/publishers[0] から {name, image, developer, publisher} を抽出する(U1, REQ-035)', async () => {
+test('fetchAppInfo: 成功時は name/header_image/developers[0]/publishers[0]/release_date.date から {name, image, developer, publisher, releaseDate} を抽出する(U1, REQ-035, REQ-036)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
@@ -378,6 +468,7 @@ test('fetchAppInfo: 成功時は name/header_image/developers[0]/publishers[0] �
           header_image: 'https://example.com/header_japanese.jpg',
           developers: ['Developer X', 'Developer Y'],
           publishers: ['Publisher X'],
+          release_date: { coming_soon: false, date: '2022年2月24日' },
         },
       },
     }),
@@ -388,7 +479,20 @@ test('fetchAppInfo: 成功時は name/header_image/developers[0]/publishers[0] �
     image: 'https://example.com/header_japanese.jpg',
     developer: 'Developer X',
     publisher: 'Publisher X',
+    releaseDate: '2022年2月24日',
   });
+});
+
+test('fetchAppInfo REQ-036: release_date キー自体が無いときは releaseDate が null', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      '1': { success: true, data: { name: 'A', header_image: 'https://example.com/h.jpg' } },
+    }),
+  });
+  const info = await fetchAppInfo(1, 'japanese', fetchImpl);
+  assert.equal(info.releaseDate, null);
 });
 
 test('fetchAppInfo: developers/publishers が空配列のときは developer/publisher が null(REQ-035)', async () => {
@@ -420,14 +524,14 @@ test('fetchAppInfo: developers/publishers キー自体が無いときも develop
   assert.equal(info.publisher, null);
 });
 
-test('fetchAppInfo: success:false のときは {name: null, image: null, developer: null, publisher: null} を返す(U1, REQ-035)', async () => {
+test('fetchAppInfo: success:false のときは {name, image, developer, publisher, releaseDate} が全て null を返す(U1, REQ-035, REQ-036)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
     json: async () => ({ '1': { success: false } }),
   });
   const info = await fetchAppInfo(1, 'japanese', fetchImpl);
-  assert.deepEqual(info, { name: null, image: null, developer: null, publisher: null });
+  assert.deepEqual(info, { name: null, image: null, developer: null, publisher: null, releaseDate: null });
 });
 
 test('fetchAppInfo: 429 は rateLimited フラグ付きの例外を投げる(既存挙動維持, U1)', async () => {
