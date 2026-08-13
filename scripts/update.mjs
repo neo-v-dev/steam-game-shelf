@@ -5,7 +5,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fetchOwnedGames, mergeCatalog, parseJsonc } from './lib.mjs';
+import {
+  fetchOwnedGames,
+  fetchLocalizedName,
+  mergeCatalog,
+  parseJsonc,
+} from './lib.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = join(root, 'data', 'catalog.json');
@@ -30,6 +35,38 @@ const { games, newGames } = mergeCatalog(
   prevCatalog,
   settings.default_visibility !== false
 );
+
+// 日本語ゲーム名の差分取得。
+// ストア API はレート制限が厳しい(概ね 200 req/5min)ため、1回の実行で最大 150 件に抑え、
+// 未取得分は次回以降の実行で少しずつ埋める。取得結果(null 含む)はカタログにキャッシュされ、
+// name_ja キーが既に存在するゲームは再取得しない。
+if (settings.fetch_japanese_names !== false) {
+  const MAX_PER_RUN = 150;
+  const WAIT_MS = 1500;
+  const pending = games.filter((g) => !('name_ja' in g));
+  const targets = pending.slice(0, MAX_PER_RUN);
+  if (targets.length > 0) {
+    console.log(
+      `日本語名を取得中: ${targets.length} 件 (未取得 ${pending.length} 件)`
+    );
+    let fetched = 0;
+    for (const g of targets) {
+      try {
+        g.name_ja = await fetchLocalizedName(g.appid, 'japanese');
+        fetched++;
+      } catch (err) {
+        if (err.rateLimited) {
+          console.warn(`レート制限に達したため中断します (${fetched} 件取得済み)。残りは次回実行で取得されます。`);
+          break;
+        }
+        // 一時的なエラーはキャッシュせず、次回の実行で再試行する
+        console.warn(`  appid ${g.appid} の日本語名取得に失敗: ${err.message}`);
+      }
+      await new Promise((r) => setTimeout(r, WAIT_MS));
+    }
+    console.log(`日本語名: ${fetched} 件取得 (残り ${pending.length - targets.length} 件は次回以降)`);
+  }
+}
 
 mkdirSync(dirname(catalogPath), { recursive: true });
 writeFileSync(

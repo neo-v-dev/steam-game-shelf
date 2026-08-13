@@ -8,6 +8,7 @@ A template that fetches your owned games from Steam and publishes them as a webs
 - **Auto update**: The list refreshes daily; manual refresh is one click.
 - **Hide games**: Exclude any game from the site.
 - **Japanese / English**: Viewers can switch languages on the site.
+- **Japanese titles**: Localized (Japanese) game names are fetched automatically and shown in Japanese mode; search matches both names.
 
 ## Requirements
 
@@ -32,7 +33,9 @@ From then on the list updates daily. Newly purchased games follow the `default_v
 
 ## Settings
 
-See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `show_playtime`, `show_last_played`, `default_visibility`.
+See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `show_playtime`, `show_last_played`, `default_visibility`, `fetch_japanese_names`.
+
+Note on Japanese titles: the Steam store API is heavily rate-limited, so localized names are fetched up to 150 per run and cached in `data/catalog.json`. Large libraries fill in over a few runs (daily auto-updates or manual runs).
 
 ## ⚠️ About hiding games
 

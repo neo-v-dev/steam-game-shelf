@@ -53,6 +53,11 @@ function headerImageUrl(appid) {
   return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
 }
 
+// 日本語表示時は邦題(あれば)、英語表示時は原題を返す
+function displayName(g) {
+  return state.lang === 'ja' && g.name_ja ? g.name_ja : g.name;
+}
+
 function formatDate(epochSeconds) {
   const locale = state.lang === 'ja' ? 'ja-JP' : 'en-US';
   return new Date(epochSeconds * 1000).toLocaleDateString(locale);
@@ -60,8 +65,10 @@ function formatDate(epochSeconds) {
 
 function sortedFilteredGames() {
   const q = state.query.trim().toLowerCase();
-  let games = state.data.games.filter((g) =>
-    g.name.toLowerCase().includes(q)
+  let games = state.data.games.filter(
+    (g) =>
+      g.name.toLowerCase().includes(q) ||
+      (g.name_ja && g.name_ja.toLowerCase().includes(q))
   );
   const locale = state.lang === 'ja' ? 'ja' : 'en';
   switch (state.sort) {
@@ -72,7 +79,7 @@ function sortedFilteredGames() {
       games.sort((a, b) => b.rtime_last_played - a.rtime_last_played);
       break;
     default:
-      games.sort((a, b) => a.name.localeCompare(b.name, locale));
+      games.sort((a, b) => displayName(a).localeCompare(displayName(b), locale));
   }
   return games;
 }
@@ -151,7 +158,7 @@ function render() {
 
     const name = document.createElement('div');
     name.className = 'card-name';
-    name.textContent = g.name;
+    name.textContent = displayName(g);
     body.appendChild(name);
 
     const meta = document.createElement('div');

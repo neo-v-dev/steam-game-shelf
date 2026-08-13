@@ -33,23 +33,49 @@ export async function fetchOwnedGames(apiKey, steamId, fetchImpl = fetch) {
 
 /**
  * 取得結果を既存カタログとマージする。
- * 既存ゲームの visible フラグは維持し、新規ゲームには defaultVisibility を適用する。
+ * 既存ゲームの visible フラグと name_ja キャッシュは維持し、新規ゲームには defaultVisibility を適用する。
  */
 export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true) {
   const prevByAppId = new Map(
     (prevCatalog?.games ?? []).map((g) => [g.appid, g])
   );
   const games = fetchedGames
-    .map((g) => ({
-      appid: g.appid,
-      name: g.name ?? `App ${g.appid}`,
-      playtime_forever: g.playtime_forever ?? 0,
-      rtime_last_played: g.rtime_last_played ?? 0,
-      visible: prevByAppId.get(g.appid)?.visible ?? defaultVisibility,
-    }))
+    .map((g) => {
+      const prev = prevByAppId.get(g.appid);
+      const merged = {
+        appid: g.appid,
+        name: g.name ?? `App ${g.appid}`,
+        playtime_forever: g.playtime_forever ?? 0,
+        rtime_last_played: g.rtime_last_played ?? 0,
+        visible: prev?.visible ?? defaultVisibility,
+      };
+      // name_ja はキーの有無で「取得試行済みか」を判定するため、null もそのまま引き継ぐ
+      if (prev && 'name_ja' in prev) merged.name_ja = prev.name_ja;
+      return merged;
+    })
     .sort((a, b) => a.name.localeCompare(b.name, 'en'));
   const newGames = games.filter((g) => !prevByAppId.has(g.appid));
   return { games, newGames };
+}
+
+/**
+ * ストア API からローカライズされたゲーム名を取得する。
+ * 見つからない・ローカライズ名が無い場合は null(=取得試行済みとしてキャッシュしてよい)。
+ * レート制限(429)時は err.rateLimited = true の例外を投げる。
+ */
+export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = fetch) {
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic`;
+  const res = await fetchImpl(url);
+  if (res.status === 429 || res.status === 403) {
+    const err = new Error(`appdetails rate limited (HTTP ${res.status})`);
+    err.rateLimited = true;
+    throw err;
+  }
+  if (!res.ok) throw new Error(`appdetails error: HTTP ${res.status}`);
+  const data = await res.json();
+  const entry = data?.[String(appid)];
+  if (!entry?.success || !entry.data?.name) return null;
+  return entry.data.name;
 }
 
 /**
@@ -59,7 +85,11 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
 export function buildPublicData(catalog, settings, generatedAt) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, ...g }) => g);
+    .map(({ visible, name_ja, ...g }) => {
+      // 日本語名は原題と異なる場合のみ公開データに含める(サイズ削減)
+      if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
+      return g;
+    });
   return {
     generated_at: generatedAt,
     fetched_at: catalog?.fetched_at ?? null,

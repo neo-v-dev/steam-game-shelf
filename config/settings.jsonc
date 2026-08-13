@@ -17,6 +17,10 @@
   // 最終プレイ日を表示するか
   "show_last_played": true,
 
+  // 日本語のゲーム名を取得するか。日本語表示のとき、邦題があれば邦題で表示されます。
+  // ストア API のレート制限のため、所持数が多い場合は数回の更新に分けて少しずつ取得されます。
+  "fetch_japanese_names": true,
+
   // 新しく取得されたゲームをデフォルトで表示するか。
   // false にすると、新規ゲームは data/catalog.json で visible を true にするまで表示されません。
   "default_visibility": true
