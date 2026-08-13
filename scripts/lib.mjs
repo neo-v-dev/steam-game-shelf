@@ -51,9 +51,14 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
         // プレイ済みタグ: 手動設定があれば維持、なければプレイ時間から自動判定
         played:
           prev && 'played' in prev ? prev.played : (g.playtime_forever ?? 0) > 0,
+        // ゲーム単位のプレイ時間表示(全体設定 show_playtime とは独立に保持)
+        show_playtime:
+          prev && 'show_playtime' in prev ? prev.show_playtime : true,
       };
       // name_ja はキーの有無で「取得試行済みか」を判定するため、null もそのまま引き継ぐ
       if (prev && 'name_ja' in prev) merged.name_ja = prev.name_ja;
+      // 配信リンク(管理ページで設定)も維持する
+      if (prev?.stream_url) merged.stream_url = prev.stream_url;
       return merged;
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'en'));
@@ -88,10 +93,12 @@ export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = f
 export function buildPublicData(catalog, settings, generatedAt) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, name_ja, played, ...g }) => {
-      // 日本語名は原題と異なる場合のみ、プレイ済みタグは true の場合のみ含める(サイズ削減)
+    .map(({ visible, name_ja, played, stream_url, show_playtime, ...g }) => {
+      // デフォルトと異なる値のみ公開データに含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
       if (played) g.played = true;
+      if (stream_url) g.stream_url = stream_url;
+      if (show_playtime === false) g.show_playtime = false;
       return g;
     });
   return {
@@ -104,6 +111,7 @@ export function buildPublicData(catalog, settings, generatedAt) {
       default_lang: settings.default_lang === 'en' ? 'en' : 'ja',
       show_playtime: settings.show_playtime !== false,
       show_last_played: settings.show_last_played !== false,
+      channel_url: settings.channel_url || '',
     },
     games: visibleGames,
   };

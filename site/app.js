@@ -10,6 +10,8 @@ const I18N = {
     filter_played: 'プレイ済み',
     filter_unplayed: '未プレイ',
     badge_played: 'プレイ済み',
+    watch_stream: '配信を見る',
+    channel: '配信チャンネル',
     stats_games: (n) => `${n} 本`,
     stats_hours: (h) => `総プレイ ${h.toLocaleString('ja-JP')} 時間`,
     playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
@@ -32,6 +34,8 @@ const I18N = {
     filter_played: 'Played',
     filter_unplayed: 'Not played',
     badge_played: 'Played',
+    watch_stream: 'Watch stream',
+    channel: 'Channel',
     stats_games: (n) => `${n} games`,
     stats_hours: (h) => `${h.toLocaleString('en-US')} hours total`,
     playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
@@ -108,6 +112,16 @@ function render() {
   document.title = data.site.title;
   $('site-description').textContent = data.site.description;
 
+  // ヘッダーのチャンネルリンク
+  const channel = $('channel-link');
+  if (data.site.channel_url) {
+    channel.href = data.site.channel_url;
+    $('channel-link-label').textContent = tr.channel;
+    channel.hidden = false;
+  } else {
+    channel.hidden = true;
+  }
+
   if (!data.published) {
     $('notice').textContent = tr.unpublished;
     $('notice').hidden = false;
@@ -156,11 +170,18 @@ function render() {
   const grid = $('grid');
   grid.innerHTML = '';
   for (const g of games) {
-    const card = document.createElement('a');
+    // ストアリンクは全面オーバーレイの <a>、配信リンクはその上に重ねる別の <a>。
+    // (<a> の入れ子は不正なため、カード自体は <div> にする)
+    const card = document.createElement('div');
     card.className = 'card';
-    card.href = `https://store.steampowered.com/app/${g.appid}/`;
-    card.target = '_blank';
-    card.rel = 'noopener';
+
+    const overlay = document.createElement('a');
+    overlay.className = 'card-overlay';
+    overlay.href = `https://store.steampowered.com/app/${g.appid}/`;
+    overlay.target = '_blank';
+    overlay.rel = 'noopener';
+    overlay.setAttribute('aria-label', displayName(g));
+    card.appendChild(overlay);
 
     const img = document.createElement('img');
     img.className = 'card-image';
@@ -188,9 +209,23 @@ function render() {
     name.textContent = displayName(g);
     body.appendChild(name);
 
+    if (g.stream_url) {
+      body.classList.add('has-video');
+      const video = document.createElement('a');
+      video.className = 'video-link';
+      video.href = g.stream_url;
+      video.target = '_blank';
+      video.rel = 'noopener';
+      video.title = tr.watch_stream;
+      video.setAttribute('aria-label', tr.watch_stream);
+      video.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2.2 14.5v-9l7 4.5-7 4.5z"/></svg>';
+      body.appendChild(video);
+    }
+
     const meta = document.createElement('div');
     meta.className = 'card-meta';
-    if (data.site.show_playtime) {
+    if (data.site.show_playtime && g.show_playtime !== false) {
       const hours = g.playtime_forever / 60;
       const span = document.createElement('span');
       span.textContent =

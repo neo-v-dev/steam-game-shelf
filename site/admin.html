@@ -37,15 +37,55 @@
       </div>
     </section>
 
+    <section id="settings-card" class="admin-card" hidden>
+      <h2 id="settings-title"></h2>
+      <div class="admin-form">
+        <label>
+          <span id="label-site-title"></span>
+          <input id="set-site-title" type="text" autocomplete="off">
+        </label>
+        <label>
+          <span id="label-default-lang"></span>
+          <select id="set-default-lang" class="sort">
+            <option value="ja">日本語 (ja)</option>
+            <option value="en">English (en)</option>
+          </select>
+        </label>
+        <label class="admin-check">
+          <input id="set-show-playtime" type="checkbox">
+          <span id="label-show-playtime"></span>
+        </label>
+        <p id="help-show-playtime" class="admin-help small"></p>
+        <label>
+          <span id="label-channel-url"></span>
+          <input id="set-channel-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/@...">
+        </label>
+      </div>
+    </section>
+
     <section id="editor" class="admin-card" hidden>
-      <h2 id="editor-title"></h2>
+      <div class="admin-editor-head">
+        <h2 id="editor-title"></h2>
+        <div class="view-toggle">
+          <button id="view-list" class="admin-button small" type="button"></button>
+          <button id="view-cards" class="admin-button small" type="button"></button>
+        </div>
+      </div>
       <div class="admin-toolbar">
         <input id="admin-search" class="search" type="search" autocomplete="off">
-        <button id="show-all" class="admin-button" type="button"></button>
-        <button id="hide-all" class="admin-button" type="button"></button>
+      </div>
+      <div class="admin-bulk">
+        <span id="bulk-visible-label" class="admin-bulk-label"></span>
+        <button id="visible-all-on" class="admin-button small" type="button"></button>
+        <button id="visible-all-off" class="admin-button small" type="button"></button>
+        <span class="admin-bulk-sep"></span>
+        <span id="bulk-played-label" class="admin-bulk-label"></span>
+        <button id="played-all-on" class="admin-button small" type="button"></button>
+        <button id="played-all-off" class="admin-button small" type="button"></button>
       </div>
       <p id="counts" class="admin-help"></p>
       <div id="game-list" class="admin-list"></div>
+      <div id="game-cards" class="grid admin-grid" hidden></div>
 
       <div class="admin-savebar">
         <label class="admin-published">
