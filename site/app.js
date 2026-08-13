@@ -6,6 +6,10 @@ const I18N = {
     sort_name: '名前順',
     sort_playtime: 'プレイ時間順',
     sort_last_played: '最近プレイした順',
+    filter_all: 'すべて',
+    filter_played: 'プレイ済み',
+    filter_unplayed: '未プレイ',
+    badge_played: 'プレイ済み',
     stats_games: (n) => `${n} 本`,
     stats_hours: (h) => `総プレイ ${h.toLocaleString('ja-JP')} 時間`,
     playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
@@ -24,6 +28,10 @@ const I18N = {
     sort_name: 'Name',
     sort_playtime: 'Playtime',
     sort_last_played: 'Recently played',
+    filter_all: 'All',
+    filter_played: 'Played',
+    filter_unplayed: 'Not played',
+    badge_played: 'Played',
     stats_games: (n) => `${n} games`,
     stats_hours: (h) => `${h.toLocaleString('en-US')} hours total`,
     playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
@@ -44,6 +52,7 @@ const state = {
   data: null,
   query: '',
   sort: 'name',
+  filter: 'all',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -70,6 +79,8 @@ function sortedFilteredGames() {
       g.name.toLowerCase().includes(q) ||
       (g.name_ja && g.name_ja.toLowerCase().includes(q))
   );
+  if (state.filter === 'played') games = games.filter((g) => g.played);
+  if (state.filter === 'unplayed') games = games.filter((g) => !g.played);
   const locale = state.lang === 'ja' ? 'ja' : 'en';
   switch (state.sort) {
     case 'playtime':
@@ -130,6 +141,15 @@ function render() {
     .map(([v, label]) => `<option value="${v}">${label}</option>`)
     .join('');
   $('sort').value = state.sort;
+  const filterOptions = [
+    ['all', tr.filter_all],
+    ['played', tr.filter_played],
+    ['unplayed', tr.filter_unplayed],
+  ];
+  $('filter').innerHTML = filterOptions
+    .map(([v, label]) => `<option value="${v}">${label}</option>`)
+    .join('');
+  $('filter').value = state.filter;
 
   // グリッド
   const games = sortedFilteredGames();
@@ -152,6 +172,13 @@ function render() {
       card.classList.add('no-image');
     };
     card.appendChild(img);
+
+    if (g.played) {
+      const badge = document.createElement('span');
+      badge.className = 'card-badge';
+      badge.textContent = t().badge_played;
+      card.appendChild(badge);
+    }
 
     const body = document.createElement('div');
     body.className = 'card-body';
@@ -215,6 +242,10 @@ async function main() {
   });
   $('sort').addEventListener('change', (e) => {
     state.sort = e.target.value;
+    render();
+  });
+  $('filter').addEventListener('change', (e) => {
+    state.filter = e.target.value;
     render();
   });
 

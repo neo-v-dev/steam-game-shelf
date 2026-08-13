@@ -6,7 +6,9 @@ A template that fetches your owned games from Steam and publishes them as a webs
 
 - **Free**: Runs entirely on GitHub's free tier (Actions + Pages). No server needed.
 - **Auto update**: The list refreshes daily; manual refresh is one click.
+- **Admin page**: Edit visibility, played tags, and the publish state with checkboxes in your browser.
 - **Hide games**: Exclude any game from the site.
+- **Played tags**: Auto-detected from playtime, editable per game; shown as badges and usable as a filter.
 - **Japanese / English**: Viewers can switch languages on the site.
 - **Japanese titles**: Localized (Japanese) game names are fetched automatically and shown in Japanese mode; search matches both names.
 
@@ -26,10 +28,20 @@ A template that fetches your owned games from Steam and publishes them as a webs
 3. **Add secrets** — In your repo: **Settings → Secrets and variables → Actions**, add `STEAM_API_KEY` and `STEAM_ID`.
 4. **Enable Pages** — **Settings → Pages → Source: GitHub Actions**.
 5. **First fetch** — **Actions tab → "Update game list" → "Run workflow"**. This commits your full library to `data/catalog.json`. The site stays in "not published" mode for now.
-6. **Hide games** — Edit `data/catalog.json` on GitHub and set `"visible": false` for any game you don't want shown.
-7. **Publish** — Edit `config/settings.jsonc` and set `"published": true`. Your site goes live at `https://<username>.github.io/<repo>/`.
+6. **Hide games** — Open `https://<username>.github.io/<repo>/admin.html` and toggle games with checkboxes (see "Admin page" below). Alternatively, edit `data/catalog.json` on GitHub and set `"visible": false`.
+7. **Publish** — Check "Publish the site" on the admin page and save, or set `"published": true` in `config/settings.jsonc`. Your site goes live at `https://<username>.github.io/<repo>/`.
 
 From then on the list updates daily. Newly purchased games follow the `default_visibility` setting.
+
+## Admin page
+
+`https://<username>.github.io/<repo>/admin.html` lets you edit per-game visibility, played tags, and the publish state without touching JSON. Saving commits via the GitHub API, and the site updates in a minute or two.
+
+Saving requires a fine-grained personal access token (GitHub Settings → Developer settings → Fine-grained tokens): limit it to your repository only, with the **Contents: Read and write** permission. The token is stored only in your browser's localStorage and is sent only to api.github.com. Anyone can open the page, but nobody can save without your token. Try the UI with `admin.html?demo=1`.
+
+## Played tags
+
+Each game can carry a "Played" tag. It defaults to on when playtime is over zero, and manual changes are preserved across daily updates. The site shows it as a badge and offers a played/not-played filter.
 
 ## Settings
 

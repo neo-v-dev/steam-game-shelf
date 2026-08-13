@@ -48,6 +48,9 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
         playtime_forever: g.playtime_forever ?? 0,
         rtime_last_played: g.rtime_last_played ?? 0,
         visible: prev?.visible ?? defaultVisibility,
+        // プレイ済みタグ: 手動設定があれば維持、なければプレイ時間から自動判定
+        played:
+          prev && 'played' in prev ? prev.played : (g.playtime_forever ?? 0) > 0,
       };
       // name_ja はキーの有無で「取得試行済みか」を判定するため、null もそのまま引き継ぐ
       if (prev && 'name_ja' in prev) merged.name_ja = prev.name_ja;
@@ -85,9 +88,10 @@ export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = f
 export function buildPublicData(catalog, settings, generatedAt) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, name_ja, ...g }) => {
-      // 日本語名は原題と異なる場合のみ公開データに含める(サイズ削減)
+    .map(({ visible, name_ja, played, ...g }) => {
+      // 日本語名は原題と異なる場合のみ、プレイ済みタグは true の場合のみ含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
+      if (played) g.played = true;
       return g;
     });
   return {
