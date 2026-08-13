@@ -51,11 +51,16 @@
             <option value="en">English (en)</option>
           </select>
         </label>
+        <h3 id="group-display-items" class="admin-subheading"></h3>
+        <p id="help-display-items" class="admin-help small"></p>
         <label class="admin-check">
           <input id="set-show-playtime" type="checkbox">
           <span id="label-show-playtime"></span>
         </label>
-        <p id="help-show-playtime" class="admin-help small"></p>
+        <label class="admin-check">
+          <input id="set-show-played" type="checkbox">
+          <span id="label-show-played"></span>
+        </label>
         <label>
           <span id="label-channel-url"></span>
           <input id="set-channel-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://www.youtube.com/@...">
@@ -73,15 +78,6 @@
       </div>
       <div class="admin-toolbar">
         <input id="admin-search" class="search" type="search" autocomplete="off">
-      </div>
-      <div class="admin-bulk">
-        <span id="bulk-visible-label" class="admin-bulk-label"></span>
-        <button id="visible-all-on" class="admin-button small" type="button"></button>
-        <button id="visible-all-off" class="admin-button small" type="button"></button>
-        <span class="admin-bulk-sep"></span>
-        <span id="bulk-played-label" class="admin-bulk-label"></span>
-        <button id="played-all-on" class="admin-button small" type="button"></button>
-        <button id="played-all-off" class="admin-button small" type="button"></button>
       </div>
       <p id="counts" class="admin-help"></p>
       <div id="game-list" class="admin-list"></div>
@@ -102,6 +98,6 @@
     <a id="back-link" href="./"></a>
   </footer>
 
-  <script src="admin.js"></script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>

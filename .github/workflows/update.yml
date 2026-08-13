@@ -26,6 +26,9 @@ concurrency:
 
 jobs:
   update-and-deploy:
+    # テンプレートリポジトリ自身では日次自動更新も push 時の再デプロイも行わない
+    # (Steam の認証情報を持たないため失敗し続ける。デモは demo.yml が担当する)
+    if: github.repository != 'neo-v-dev/steam-game-shelf'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

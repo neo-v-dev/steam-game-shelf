@@ -6,3 +6,6 @@ site/data/
 
 node_modules/
 .DS_Store
+
+# 開発ツールのローカル状態(テンプレートに含めない)
+.claude/

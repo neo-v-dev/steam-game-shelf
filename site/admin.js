@@ -3,7 +3,10 @@
 // config/settings.jsonc(サイト名・初期言語・プレイ時間表示・チャンネルURL・公開状態)を編集し、
 // そのままコミットする。トークンはこのブラウザの localStorage にのみ保存され、
 // api.github.com 以外には一切送信されない。
+// 読み込み時にトークンの有効性と書き込み権限を検証してから catalog を取得する(admin-core.mjs)。
 // ?demo=1 を付けるとサンプルデータで操作感を試せる(保存は無効)。
+
+import { parseJsonc, setJsoncValue, encodeContent, decodeContent, verifyToken } from './admin-core.mjs';
 
 const I18N = {
   ja: {
@@ -20,19 +23,18 @@ const I18N = {
     settings_title: 'サイト設定',
     label_site_title: 'サイト名',
     label_default_lang: '初期表示言語',
+    group_display_items: 'カードの表示項目',
+    help_display_items:
+      'それぞれOFFにすると、カードだけでなく上部の統計や絞り込みにも反映されます(プレイ時間: 統計の合計時間表示。プレイ済み: 「プレイ済み/未プレイ」絞り込み)。ゲームごとの値は保持され、ONに戻すと元どおり反映されます。',
     label_show_playtime: 'プレイ時間を表示(サイト全体)',
-    help_show_playtime:
-      'OFFにするとサイト全体でプレイ時間が非表示になります。ゲームごとの「時間表示」設定は保持され、ONに戻すと元どおり反映されます。',
+    label_show_played: 'プレイ済みタグを表示(サイト全体)',
     label_channel_url: 'チャンネルURL(ページ上部にリンク表示)',
     editor_title: 'ゲームの表示設定',
     view_list: 'リスト',
     view_cards: 'カード',
     search_placeholder: 'ゲーム名で絞り込み…',
-    bulk_visible: '表示:',
-    bulk_played: 'プレイ済み:',
-    all_on: '全てON',
-    all_off: '全てOFF',
     counts: (visible, total) => `${total} 本中 ${visible} 本を表示 / ${total - visible} 本を非表示`,
+    counts_cards_hint: 'カードをクリックで表示/非表示を切り替え',
     tag_played: 'プレイ済み',
     tag_show_playtime: '時間表示',
     stream_placeholder: '配信/動画URL(任意)',
@@ -45,7 +47,13 @@ const I18N = {
     back: '← サイトに戻る',
     err_no_repo: 'リポジトリを owner/repository の形式で入力してください。',
     err_no_token: 'アクセストークンを入力してください。',
-    err_auth: '認証に失敗しました。トークンと権限(Contents: Read and write)を確認してください。',
+    err_auth: 'トークンが無効か権限が不足しています。トークンと権限(Contents: Read and write)を確認してください。',
+    err_token_invalid: 'アクセストークンが無効です。トークンを確認してください。',
+    err_no_write:
+      'このトークンには書き込み権限がありません。Fine-grained PAT の Contents 権限を「Read and write」に設定してください。',
+    err_rate_limit: 'GitHub API のレート制限に達しました。しばらく待ってから再度お試しください。',
+    err_repo_not_found:
+      'リポジトリが見つかりません。「owner/repository」の綴りと、トークンの対象リポジトリ設定を確認してください。',
     err_no_catalog:
       'data/catalog.json が見つかりません。先に GitHub の Actions タブから「Update game list」を実行して、ゲームリストを取得してください。',
     err_load: (msg) => `読み込みに失敗しました: ${msg}`,
@@ -68,19 +76,18 @@ const I18N = {
     settings_title: 'Site settings',
     label_site_title: 'Site title',
     label_default_lang: 'Default language',
+    group_display_items: 'Card display items',
+    help_display_items:
+      'Turning either of these off affects more than the cards — it also changes the stats bar and the played/not-played filter at the top (playtime: the total-hours stat; played: the played/not-played filter). Per-game values are preserved and take effect again when turned back on.',
     label_show_playtime: 'Show playtime (site-wide)',
-    help_show_playtime:
-      'Turning this off hides playtime across the whole site. Per-game "Playtime" settings are preserved and take effect again when turned back on.',
+    label_show_played: 'Show played tag (site-wide)',
     label_channel_url: 'Channel URL (shown at the top of the page)',
     editor_title: 'Game visibility',
     view_list: 'List',
     view_cards: 'Cards',
     search_placeholder: 'Filter by title…',
-    bulk_visible: 'Visible:',
-    bulk_played: 'Played:',
-    all_on: 'All on',
-    all_off: 'All off',
     counts: (visible, total) => `${visible} of ${total} shown / ${total - visible} hidden`,
+    counts_cards_hint: 'Click a card to toggle visibility.',
     tag_played: 'Played',
     tag_show_playtime: 'Playtime',
     stream_placeholder: 'Stream/video URL (optional)',
@@ -93,7 +100,13 @@ const I18N = {
     back: '← Back to site',
     err_no_repo: 'Enter the repository as owner/repository.',
     err_no_token: 'Enter your access token.',
-    err_auth: 'Authentication failed. Check the token and its Contents: Read and write permission.',
+    err_auth: 'The token is invalid or lacks permission. Check the token and its Contents: Read and write permission.',
+    err_token_invalid: 'The access token is invalid. Please check it.',
+    err_no_write:
+      'This token does not have write access. Set the Contents permission to "Read and write" on your fine-grained PAT.',
+    err_rate_limit: 'GitHub API rate limit reached. Please wait and try again.',
+    err_repo_not_found:
+      'Repository not found. Check the "owner/repository" spelling and that the token is scoped to this repository.',
     err_no_catalog:
       'data/catalog.json not found. Run the "Update game list" workflow from the Actions tab first.',
     err_load: (msg) => `Failed to load: ${msg}`,
@@ -108,7 +121,7 @@ const DEMO = new URLSearchParams(location.search).has('demo');
 
 const state = {
   lang: 'ja',
-  view: 'list',         // 'list' | 'cards'
+  view: 'cards',         // 'list' | 'cards'(初期値はカード。REQ-013)
   games: [],            // catalog の games(visible / played / show_playtime / stream_url を編集する)
   catalogRaw: null,     // fetched_at 等を保持するための元オブジェクト
   catalogSha: null,
@@ -144,18 +157,6 @@ async function api(path, options = {}) {
   return res;
 }
 
-function decodeContent(base64) {
-  const bytes = Uint8Array.from(atob(base64.replace(/\n/g, '')), (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
-function encodeContent(text) {
-  const bytes = new TextEncoder().encode(text);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-
 async function getFile(path) {
   const res = await api(`contents/${path}`);
   if (res.status === 401 || res.status === 403) throw new Error(t().err_auth);
@@ -176,24 +177,6 @@ async function putFile(path, text, sha, message) {
   return (await res.json()).content.sha;
 }
 
-// ---- settings.jsonc の読み書き(コメント保持) ----
-
-function parseJsonc(text) {
-  const stripped = text
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('//'))
-    .join('\n');
-  return JSON.parse(stripped);
-}
-
-// 既存キーは値だけ置換し、無いキーは先頭に挿入する(コメントはそのまま残る)
-function setJsoncValue(text, key, value) {
-  const encoded = JSON.stringify(value);
-  const re = new RegExp(`("${key}"\\s*:\\s*)(?:"(?:[^"\\\\]|\\\\.)*"|true|false|null|[\\d.eE+-]+)`);
-  if (re.test(text)) return text.replace(re, `$1${encoded}`);
-  return text.replace(/\{/, `{\n  "${key}": ${encoded},`);
-}
-
 // ---- 読み込み / 保存 ----
 
 function detectRepo() {
@@ -209,6 +192,7 @@ function applySettingsToInputs() {
   $('set-site-title').value = s.site_title ?? '';
   $('set-default-lang').value = s.default_lang === 'en' ? 'en' : 'ja';
   $('set-show-playtime').checked = s.show_playtime !== false;
+  $('set-show-played').checked = s.show_played !== false;
   $('set-channel-url').value = s.channel_url ?? '';
   $('published-toggle').checked = state.published;
 }
@@ -225,6 +209,22 @@ async function load() {
   $('load-button').disabled = true;
   $('load-button').textContent = t().loading;
   try {
+    // catalog を取得する前にトークンの有効性と書き込み権限を検証する(REQ-016)。
+    // 保存時まで発覚しない現状UIの是正のため、ここで通らなければ中断する。
+    const { owner, repo } = repoParts();
+    const token = $('token-input').value.trim();
+    const verify = await verifyToken(fetch, owner, repo, token);
+    if (!verify.ok) {
+      const messages = {
+        invalid_token: t().err_token_invalid,
+        not_found: t().err_repo_not_found,
+        rate_limit: t().err_rate_limit,
+        no_write: t().err_no_write,
+      };
+      setStatus(messages[verify.reason] ?? t().err_auth, true);
+      return;
+    }
+
     const catalog = await getFile('data/catalog.json');
     if (!catalog) throw new Error(t().err_no_catalog);
     const settings = await getFile('config/settings.jsonc');
@@ -266,6 +266,8 @@ function collectSettingsChanges() {
   if (lang !== (s.default_lang === 'en' ? 'en' : 'ja')) changes.default_lang = lang;
   const showPlaytime = $('set-show-playtime').checked;
   if (showPlaytime !== (s.show_playtime !== false)) changes.show_playtime = showPlaytime;
+  const showPlayed = $('set-show-played').checked;
+  if (showPlayed !== (s.show_played !== false)) changes.show_played = showPlayed;
   const channel = $('set-channel-url').value.trim();
   if (channel !== (s.channel_url ?? '')) changes.channel_url = channel;
   if ($('published-toggle').checked !== (s.published === true))
@@ -338,6 +340,7 @@ function loadDemo() {
     site_title: 'Demo Game Shelf',
     default_lang: 'ja',
     show_playtime: true,
+    show_played: true,
     channel_url: 'https://www.youtube.com/@demo',
     published: true,
   };
@@ -376,15 +379,18 @@ function setStatus(msg, isError = false) {
   el.classList.toggle('error', isError);
 }
 
-function makeChip(label, isOn, onToggle) {
+function makeChip(label, isOn, onToggle, isEnabled) {
+  // isEnabled が false を返す間は操作不可(サイト設定の全体スイッチOFF, REQ-018)
+  const enabled = () => !isEnabled || isEnabled();
   const chip = document.createElement('button');
   chip.type = 'button';
-  chip.className = 'tag-chip' + (isOn() ? ' on' : '');
+  chip.className = 'tag-chip' + (isOn() ? ' on' : '') + (enabled() ? '' : ' locked');
   chip.textContent = label;
   chip.addEventListener('click', (e) => {
     // 行全体が label / カード全体がクリック対象のため、伝播を止める
     e.preventDefault();
     e.stopPropagation();
+    if (!enabled()) return;
     onToggle();
     chip.classList.toggle('on', isOn());
   });
@@ -428,12 +434,20 @@ function renderList() {
     name.textContent = displayName(g);
     row.appendChild(name);
 
-    row.appendChild(makeChip(t().tag_played, () => g.played, () => (g.played = !g.played)));
+    row.appendChild(
+      makeChip(
+        t().tag_played,
+        () => g.played,
+        () => (g.played = !g.played),
+        () => $('set-show-played').checked
+      )
+    );
     row.appendChild(
       makeChip(
         t().tag_show_playtime,
         () => g.show_playtime !== false,
-        () => (g.show_playtime = g.show_playtime === false)
+        () => (g.show_playtime = g.show_playtime === false),
+        () => $('set-show-playtime').checked
       )
     );
     row.appendChild(makeStreamInput(g));
@@ -483,12 +497,20 @@ function renderCards() {
 
     const chips = document.createElement('div');
     chips.className = 'admin-card-chips';
-    chips.appendChild(makeChip(t().tag_played, () => g.played, () => (g.played = !g.played)));
+    chips.appendChild(
+      makeChip(
+        t().tag_played,
+        () => g.played,
+        () => (g.played = !g.played),
+        () => $('set-show-played').checked
+      )
+    );
     chips.appendChild(
       makeChip(
         t().tag_show_playtime,
         () => g.show_playtime !== false,
-        () => (g.show_playtime = g.show_playtime === false)
+        () => (g.show_playtime = g.show_playtime === false),
+        () => $('set-show-playtime').checked
       )
     );
     body.appendChild(chips);
@@ -514,7 +536,10 @@ function renderCards() {
 
 function renderCounts() {
   const visible = state.games.filter((g) => g.visible).length;
-  $('counts').textContent = t().counts(visible, state.games.length);
+  let text = t().counts(visible, state.games.length);
+  // カード表示のときだけ操作説明を添える(REQ-014)
+  if (state.view === 'cards') text += ' ' + t().counts_cards_hint;
+  $('counts').textContent = text;
 }
 
 function renderGames() {
@@ -540,19 +565,15 @@ function render() {
   $('settings-title').textContent = tr.settings_title;
   $('label-site-title').textContent = tr.label_site_title;
   $('label-default-lang').textContent = tr.label_default_lang;
+  $('group-display-items').textContent = tr.group_display_items;
+  $('help-display-items').textContent = tr.help_display_items;
   $('label-show-playtime').textContent = tr.label_show_playtime;
-  $('help-show-playtime').textContent = tr.help_show_playtime;
+  $('label-show-played').textContent = tr.label_show_played;
   $('label-channel-url').textContent = tr.label_channel_url;
   $('editor-title').textContent = tr.editor_title;
   $('view-list').textContent = tr.view_list;
   $('view-cards').textContent = tr.view_cards;
   $('admin-search').placeholder = tr.search_placeholder;
-  $('bulk-visible-label').textContent = tr.bulk_visible;
-  $('bulk-played-label').textContent = tr.bulk_played;
-  $('visible-all-on').textContent = tr.all_on;
-  $('visible-all-off').textContent = tr.all_off;
-  $('played-all-on').textContent = tr.all_on;
-  $('played-all-off').textContent = tr.all_off;
   $('label-published').textContent = tr.label_published;
   $('save-button').textContent = tr.save;
   $('back-link').textContent = tr.back;
@@ -560,12 +581,6 @@ function render() {
     renderCounts();
     renderGames();
   }
-}
-
-function setBulk(field, value) {
-  for (const g of filteredGames()) g[field] = value;
-  renderCounts();
-  renderGames();
 }
 
 // ---- 初期化 ----
@@ -598,13 +613,16 @@ function init() {
   $('save-button').addEventListener('click', save);
   $('view-list').addEventListener('click', () => setView('list'));
   $('view-cards').addEventListener('click', () => setView('cards'));
-  $('visible-all-on').addEventListener('click', () => setBulk('visible', true));
-  $('visible-all-off').addEventListener('click', () => setBulk('visible', false));
-  $('played-all-on').addEventListener('click', () => setBulk('played', true));
-  $('played-all-off').addEventListener('click', () => setBulk('played', false));
   $('admin-search').addEventListener('input', (e) => {
     state.query = e.target.value;
     renderGames();
+  });
+  // 全体スイッチ変更時、対応するチップのロック状態を即時反映(REQ-018)
+  $('set-show-playtime').addEventListener('change', () => {
+    if (state.loaded) renderGames();
+  });
+  $('set-show-played').addEventListener('change', () => {
+    if (state.loaded) renderGames();
   });
 
   render();
@@ -617,6 +635,7 @@ function setView(view) {
     localStorage.setItem('admin_view', view);
   } catch {}
   renderGames();
+  renderCounts();
 }
 
 init();

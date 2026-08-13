@@ -1,0 +1,45 @@
+name: Deploy demo site
+
+# テンプレートリポジトリ自身(neo-v-dev/steam-game-shelf)の GitHub Pages に、
+# サンプルデータ(demo/games.json)で常設のデモサイトをデプロイする。
+# 利用者がこのリポジトリをテンプレートから作成したコピーでは動作しない
+# (下記 if: github.repository == ... のガードにより該当ジョブがスキップされる)。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/**'
+      - 'demo/**'
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy-demo:
+    if: github.repository == 'neo-v-dev/steam-game-shelf'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use demo data as site data
+        run: cp demo/games.json site/data/games.json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

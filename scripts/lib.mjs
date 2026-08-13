@@ -110,6 +110,7 @@ export function buildPublicData(catalog, settings, generatedAt) {
       description: settings.site_description || '',
       default_lang: settings.default_lang === 'en' ? 'en' : 'ja',
       show_playtime: settings.show_playtime !== false,
+      show_played: settings.show_played !== false,
       show_last_played: settings.show_last_played !== false,
       channel_url: settings.channel_url || '',
     },

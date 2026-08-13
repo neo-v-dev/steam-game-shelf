@@ -155,15 +155,22 @@ function render() {
     .map(([v, label]) => `<option value="${v}">${label}</option>`)
     .join('');
   $('sort').value = state.sort;
-  const filterOptions = [
-    ['all', tr.filter_all],
-    ['played', tr.filter_played],
-    ['unplayed', tr.filter_unplayed],
-  ];
-  $('filter').innerHTML = filterOptions
-    .map(([v, label]) => `<option value="${v}">${label}</option>`)
-    .join('');
-  $('filter').value = state.filter;
+  // プレイ済みタグの全体表示がOFFのときは、絞り込みも意味を持たない(タグ情報が漏れるため)ので隠す
+  if (data.site.show_played === false) {
+    state.filter = 'all';
+    $('filter').hidden = true;
+  } else {
+    $('filter').hidden = false;
+    const filterOptions = [
+      ['all', tr.filter_all],
+      ['played', tr.filter_played],
+      ['unplayed', tr.filter_unplayed],
+    ];
+    $('filter').innerHTML = filterOptions
+      .map(([v, label]) => `<option value="${v}">${label}</option>`)
+      .join('');
+    $('filter').value = state.filter;
+  }
 
   // グリッド
   const games = sortedFilteredGames();
@@ -194,7 +201,7 @@ function render() {
     };
     card.appendChild(img);
 
-    if (g.played) {
+    if (data.site.show_played !== false && g.played) {
       const badge = document.createElement('span');
       badge.className = 'card-badge';
       badge.textContent = t().badge_played;

@@ -337,6 +337,13 @@ h1 {
   color: var(--text-dim);
 }
 
+.admin-subheading {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
 .admin-form input {
   padding: 9px 12px;
   border-radius: var(--radius);
@@ -382,8 +389,10 @@ h1 {
   cursor: default;
 }
 
-.admin-check {
+.admin-check,
+.admin-form label.admin-check {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   cursor: pointer;
@@ -424,26 +433,6 @@ h1 {
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 8px;
-}
-
-.admin-bulk {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-
-.admin-bulk-label {
-  color: var(--text-dim);
-  font-size: 0.82rem;
-}
-
-.admin-bulk-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--border);
-  margin: 0 6px;
 }
 
 .admin-toolbar .search {
@@ -515,6 +504,20 @@ h1 {
   border-color: var(--accent);
 }
 
+.tag-chip.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ロック中は hover しても枠線を変化させない(通常状態の色のまま) */
+.tag-chip.locked:hover {
+  border-color: var(--border);
+}
+
+.tag-chip.locked.on:hover {
+  border-color: var(--accent);
+}
+
 .admin-row-meta {
   color: var(--text-dim);
   font-size: 0.78rem;
@@ -523,7 +526,6 @@ h1 {
 
 .stream-input {
   flex-shrink: 0;
-  width: 190px;
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -539,6 +541,13 @@ h1 {
 
 .stream-input.filled {
   border-color: var(--accent);
+}
+
+/* リスト表示のURL入力欄は行内で伸縮させる(最小幅は確保しつつ広げすぎない) */
+.admin-list .stream-input {
+  flex: 1 1 260px;
+  min-width: 260px;
+  max-width: 460px;
 }
 
 /* 管理ページのカード表示 */

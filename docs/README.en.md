@@ -4,12 +4,14 @@
 
 A template that fetches your owned games from Steam and publishes them as a website on GitHub Pages. Designed for streamers who want to share their game library with viewers.
 
+**See it live**: [public page](https://neo-v-dev.github.io/steam-game-shelf/) / [admin page (UI only, saving disabled)](https://neo-v-dev.github.io/steam-game-shelf/admin.html?demo=1) — a permanent demo with sample data.
+
 - **Free**: Runs entirely on GitHub's free tier (Actions + Pages). No server needed.
 - **Auto update**: The list refreshes daily; manual refresh is one click.
-- **Admin page**: Edit visibility, played tags, per-game playtime display, stream links, and site settings in your browser, with list and thumbnail-card views.
+- **Admin page**: Edit visibility, played tags, per-game playtime display, stream links, and site settings in your browser, with a thumbnail-card view (default) and a list view.
 - **Stream links**: A channel link at the top of the page, plus per-game stream/video links (▶ icon on cards).
 - **Hide games**: Exclude any game from the site.
-- **Played tags**: Auto-detected from playtime, editable per game; shown as badges and usable as a filter.
+- **Played tags**: Auto-detected from playtime, editable per game; shown as badges and usable as a filter (can also be hidden site-wide).
 - **Japanese / English**: Viewers can switch languages on the site.
 - **Japanese titles**: Localized (Japanese) game names are fetched automatically and shown in Japanese mode; search matches both names.
 
@@ -36,9 +38,9 @@ From then on the list updates daily. Newly purchased games follow the `default_v
 
 ## Admin page
 
-`https://<username>.github.io/<repo>/admin.html` lets you edit, without touching JSON: per-game visibility (with search and bulk on/off), played tags (with bulk on/off), per-game playtime display, per-game stream/video URLs, site settings (site title, default language, site-wide playtime display, channel URL), and the publish state. Switch between a list view and a thumbnail card view that mirrors the public page (click a card to toggle visibility). The site-wide playtime switch preserves per-game settings, so turning it back on restores them. Saving commits via the GitHub API, and the site updates in a minute or two.
+`https://<username>.github.io/<repo>/admin.html` lets you edit, without touching JSON: per-game visibility (with search), played tags, per-game playtime display, per-game stream/video URLs, site settings (site title, default language, "Card display items" — site-wide switches for playtime display and the played tag, channel URL), and the publish state. The default view is the thumbnail card view that mirrors the public page (click a card to toggle visibility); you can switch to a list view, and your choice is remembered. Each "Card display items" switch preserves per-game settings when off, and also affects more than the cards themselves — it changes the top stats bar and/or the played/not-played filter on the public page too. Saving commits via the GitHub API, and the site updates in a minute or two.
 
-Saving requires a fine-grained personal access token (GitHub Settings → Developer settings → Fine-grained tokens): limit it to your repository only, with the **Contents: Read and write** permission. The token is stored only in your browser's localStorage and is sent only to api.github.com. Anyone can open the page, but nobody can save without your token. Try the UI with `admin.html?demo=1`.
+Saving requires a fine-grained personal access token (GitHub Settings → Developer settings → Fine-grained tokens): limit it to your repository only, with the **Contents: Read and write** permission. When you click "Load", the token is verified against the target repository first — if it's invalid, scoped to the wrong repository, or lacks write access, loading is blocked with an error right away (instead of only failing later when you try to save). The token is stored only in your browser's localStorage and is sent only to api.github.com. Anyone can open the page, but nobody can save without your token. Try the UI with `admin.html?demo=1` (saving is disabled in demo mode).
 
 ## Played tags
 
@@ -46,7 +48,7 @@ Each game can carry a "Played" tag. It defaults to on when playtime is over zero
 
 ## Settings
 
-See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `show_playtime`, `show_last_played`, `channel_url`, `default_visibility`, `fetch_japanese_names`.
+See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `show_playtime`, `show_played` (also hides the played/not-played filter when off), `show_last_played`, `channel_url`, `default_visibility`, `fetch_japanese_names`.
 
 Note on Japanese titles: the Steam store API is heavily rate-limited, so localized names are fetched up to 150 per run and cached in `data/catalog.json`. Large libraries fill in over a few runs (daily auto-updates or manual runs).
 
@@ -60,6 +62,9 @@ Hiding removes a game from **this site only** — it is not true secrecy. The St
 STEAM_API_KEY=xxx STEAM_ID=7656... node scripts/update.mjs
 node scripts/build.mjs
 npx serve site   # or: python3 -m http.server -d site 8000
+
+# Tests (no dependencies; uses node:test only)
+node --test
 ```
 
 Requires Node.js 20+. No dependencies.

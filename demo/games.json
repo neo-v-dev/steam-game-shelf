@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-08-01T00:00:00.000Z",
+  "fetched_at": "2026-08-01T00:00:00.000Z",
+  "published": true,
+  "site": {
+    "title": "Demo Game Shelf",
+    "description": "デモ用のサンプルデータです(このデータは常設の検証環境専用で、実際の所有ゲームではありません)。",
+    "default_lang": "ja",
+    "show_playtime": true,
+    "show_played": true,
+    "show_last_played": true,
+    "channel_url": "https://www.youtube.com/@demo-channel"
+  },
+  "games": [
+    {
+      "appid": 570,
+      "name": "Dota 2",
+      "playtime_forever": 12345,
+      "rtime_last_played": 1753574400,
+      "played": true
+    },
+    {
+      "appid": 730,
+      "name": "Counter-Strike 2",
+      "playtime_forever": 3456,
+      "rtime_last_played": 1753488000,
+      "played": true,
+      "show_playtime": false
+    },
+    {
+      "appid": 1245620,
+      "name": "ELDEN RING",
+      "name_ja": "エルデンリング",
+      "playtime_forever": 9021,
+      "rtime_last_played": 1752969600,
+      "played": true,
+      "stream_url": "https://www.youtube.com/watch?v=demo-elden-ring"
+    },
+    {
+      "appid": 1086940,
+      "name": "Baldur's Gate 3",
+      "name_ja": "バルダーズ・ゲート3",
+      "playtime_forever": 6000,
+      "rtime_last_played": 1751328000
+    },
+    {
+      "appid": 1145360,
+      "name": "Hades",
+      "name_ja": "ハデス",
+      "playtime_forever": 4100,
+      "rtime_last_played": 1752278400,
+      "played": true,
+      "stream_url": "https://www.youtube.com/watch?v=demo-hades"
+    },
+    {
+      "appid": 413150,
+      "name": "Stardew Valley",
+      "name_ja": "スターデューバレー",
+      "playtime_forever": 200,
+      "rtime_last_played": 1748736000
+    },
+    {
+      "appid": 620,
+      "name": "Portal 2",
+      "playtime_forever": 0,
+      "rtime_last_played": 0
+    },
+    {
+      "appid": 367520,
+      "name": "Hollow Knight",
+      "name_ja": "ホロウナイト",
+      "playtime_forever": 1500,
+      "rtime_last_played": 1750291200,
+      "played": true
+    }
+  ]
+}
