@@ -31,7 +31,7 @@ test('fetchOwnedGames: 送信URLに skip_unvetted_apps=false が含まれる(U1)
 
 // ---- mergeCatalog ----
 
-test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/image/stream_url を引き継ぐ', () => {
+test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/image/stream_url/developer/publisher を引き継ぐ', () => {
   const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
   const prev = {
     games: [
@@ -44,6 +44,8 @@ test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/imag
         name_ja: 'ゲームA',
         image: 'https://example.com/header.jpg',
         stream_url: 'https://example.com/stream',
+        developer: 'Developer X',
+        publisher: 'Publisher X',
       },
     ],
   };
@@ -56,7 +58,27 @@ test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/imag
   assert.equal(g.name_ja, 'ゲームA');
   assert.equal(g.image, 'https://example.com/header.jpg');
   assert.equal(g.stream_url, 'https://example.com/stream');
+  assert.equal(g.developer, 'Developer X');
+  assert.equal(g.publisher, 'Publisher X');
   assert.equal(newGames.length, 0);
+});
+
+test('mergeCatalog: prev に developer/publisher キーが無ければ引き継がない(REQ-035)', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A' }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok(!('developer' in games[0]), 'developer キーが無い prev からは developer キーを作らない');
+  assert.ok(!('publisher' in games[0]), 'publisher キーが無い prev からは publisher キーを作らない');
+});
+
+test('mergeCatalog: prev の developer/publisher が null(取得試行済みだが無し)でもキーごと引き継ぐ(REQ-035)', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A', developer: null, publisher: null }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok('developer' in games[0], 'developer キー自体は維持する');
+  assert.equal(games[0].developer, null);
+  assert.ok('publisher' in games[0], 'publisher キー自体は維持する');
+  assert.equal(games[0].publisher, null);
 });
 
 test('mergeCatalog: prev に image キーが無ければ引き継がない(U2)', () => {
@@ -84,6 +106,8 @@ test('mergeCatalog: 新規ゲームは defaultVisibility を適用し、played/s
   assert.ok(!('name_ja' in games[0]));
   assert.ok(!('image' in games[0]));
   assert.ok(!('stream_url' in games[0]));
+  assert.ok(!('developer' in games[0]));
+  assert.ok(!('publisher' in games[0]));
   assert.equal(newGames.length, 1);
   assert.equal(newGames[0].appid, 2);
 });
@@ -178,6 +202,8 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         // REQ-031: 許可ドメイン(Twitch)である必要があるため example.com から差し替え
         stream_url: 'https://www.twitch.tv/y',
         image: 'https://example.com/header.jpg', // truthy→出力(U3)
+        developer: 'Dev B',
+        publisher: 'Pub B',
       },
       {
         appid: 3,
@@ -194,7 +220,7 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         visible: true,
         played: false,
         show_playtime: true,
-        // image キー自体が無いケース(U3)
+        // image/developer/publisher キー自体が無いケース(U3)
       },
     ],
   };
@@ -211,6 +237,8 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
   assert.ok(!('show_playtime' in a), 'show_playtime が既定値(true)の場合は出力しない');
   assert.ok(!('visible' in a), 'visible は公開データに含めない');
   assert.ok(!('image' in a), 'image が null の場合は出力しない(U3)');
+  assert.ok(!('developer' in a), 'developer が null の場合は出力しない(REQ-035)');
+  assert.ok(!('publisher' in a), 'publisher が null の場合は出力しない(REQ-035)');
 
   const b = out.games.find((g) => g.appid === 2);
   assert.equal(b.name_ja, 'ビー');
@@ -218,9 +246,25 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
   assert.equal(b.stream_url, 'https://www.twitch.tv/y');
   assert.equal(b.show_playtime, false);
   assert.equal(b.image, 'https://example.com/header.jpg', 'image が truthy の場合は出力する(U3)');
+  assert.equal(b.developer, 'Dev B', 'developer が truthy の場合は出力する(REQ-035)');
+  assert.equal(b.publisher, 'Pub B', 'publisher が truthy の場合は出力する(REQ-035)');
 
   const d = out.games.find((g) => g.appid === 4);
   assert.ok(!('image' in d), 'image キーが無い場合も出力しない(U3)');
+  assert.ok(!('developer' in d), 'developer キーが無い場合も出力しない(REQ-035)');
+  assert.ok(!('publisher' in d), 'publisher キーが無い場合も出力しない(REQ-035)');
+});
+
+test('buildPublicData: settings.show_developer が site.show_developer に反映される(REQ-035)', () => {
+  const catalog = { games: [] };
+  const outUndefined = buildPublicData(catalog, { published: true }, 'now');
+  assert.equal(outUndefined.site.show_developer, true, 'show_developer 未定義は true 扱い');
+
+  const outFalse = buildPublicData(catalog, { published: true, show_developer: false }, 'now');
+  assert.equal(outFalse.site.show_developer, false);
+
+  const outTrue = buildPublicData(catalog, { published: true, show_developer: true }, 'now');
+  assert.equal(outTrue.site.show_developer, true);
 });
 
 test('buildPublicData U2: 許可外 stream_url は stream_url キーなしで出力し、excluded に積む(REQ-031)', () => {
@@ -305,31 +349,85 @@ test('parseJsonc: 行頭コメントは除去し、文字列内の // は保持�
   assert.equal(parsed.n, 1);
 });
 
-// ---- fetchAppInfo(REQ-025, U1) ----
+// ---- fetchAppInfo(REQ-025, REQ-035, U1) ----
 
-test('fetchAppInfo: 成功時は name と header_image から {name, image} を抽出する(U1)', async () => {
+test('fetchAppInfo: 送信URLの filters に basic,developers,publishers が含まれる(REQ-035)', async () => {
+  let requestedUrl = null;
+  const fetchImpl = async (url) => {
+    requestedUrl = url;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ '1': { success: false } }),
+    };
+  };
+  await fetchAppInfo(1, 'japanese', fetchImpl);
+  const params = new URL(requestedUrl).searchParams;
+  assert.equal(params.get('filters'), 'basic,developers,publishers');
+});
+
+test('fetchAppInfo: 成功時は name/header_image/developers[0]/publishers[0] から {name, image, developer, publisher} を抽出する(U1, REQ-035)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
     json: async () => ({
       '1': {
         success: true,
-        data: { name: '日本語名', header_image: 'https://example.com/header_japanese.jpg' },
+        data: {
+          name: '日本語名',
+          header_image: 'https://example.com/header_japanese.jpg',
+          developers: ['Developer X', 'Developer Y'],
+          publishers: ['Publisher X'],
+        },
       },
     }),
   });
   const info = await fetchAppInfo(1, 'japanese', fetchImpl);
-  assert.deepEqual(info, { name: '日本語名', image: 'https://example.com/header_japanese.jpg' });
+  assert.deepEqual(info, {
+    name: '日本語名',
+    image: 'https://example.com/header_japanese.jpg',
+    developer: 'Developer X',
+    publisher: 'Publisher X',
+  });
 });
 
-test('fetchAppInfo: success:false のときは {name: null, image: null} を返す(U1)', async () => {
+test('fetchAppInfo: developers/publishers が空配列のときは developer/publisher が null(REQ-035)', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      '1': {
+        success: true,
+        data: { name: 'A', header_image: 'https://example.com/h.jpg', developers: [], publishers: [] },
+      },
+    }),
+  });
+  const info = await fetchAppInfo(1, 'japanese', fetchImpl);
+  assert.equal(info.developer, null);
+  assert.equal(info.publisher, null);
+});
+
+test('fetchAppInfo: developers/publishers キー自体が無いときも developer/publisher が null(REQ-035)', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      '1': { success: true, data: { name: 'A', header_image: 'https://example.com/h.jpg' } },
+    }),
+  });
+  const info = await fetchAppInfo(1, 'japanese', fetchImpl);
+  assert.equal(info.developer, null);
+  assert.equal(info.publisher, null);
+});
+
+test('fetchAppInfo: success:false のときは {name: null, image: null, developer: null, publisher: null} を返す(U1, REQ-035)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
     json: async () => ({ '1': { success: false } }),
   });
   const info = await fetchAppInfo(1, 'japanese', fetchImpl);
-  assert.deepEqual(info, { name: null, image: null });
+  assert.deepEqual(info, { name: null, image: null, developer: null, publisher: null });
 });
 
 test('fetchAppInfo: 429 は rateLimited フラグ付きの例外を投げる(既存挙動維持, U1)', async () => {

@@ -40,6 +40,7 @@ const I18N = {
     label_show_playtime: 'プレイ時間を表示(サイト全体)',
     label_show_played: 'プレイ済みタグを表示(サイト全体)',
     label_show_last_played: '最終プレイ日を表示(サイト全体)',
+    label_show_developer: '開発元を表示(サイト全体)',
     label_channel_url: 'チャンネルURL(ページ上部にリンク表示)',
     editor_title: 'ゲームの表示設定',
     view_list: 'リスト',
@@ -48,6 +49,8 @@ const I18N = {
     sort_name: '名前順',
     sort_playtime: 'プレイ時間順',
     sort_last_played: '最近プレイした順',
+    sort_developer: '開発元順',
+    sort_publisher: '販売元順',
     counts: (visible, total) => `${total} 本中 ${visible} 本を表示 / ${total - visible} 本を非表示`,
     counts_cards_hint: 'カードをクリックで表示/非表示を切り替え',
     tag_played: 'プレイ済み',
@@ -55,6 +58,7 @@ const I18N = {
     playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
     playtime_none: '未プレイ',
     last_played: (d) => `最終プレイ: ${d}`,
+    developer: (d) => `開発元: ${d}`,
     stream_placeholder: '配信/動画URL(任意)',
     hidden_label: '非表示',
     label_published: 'サイトを公開する',
@@ -107,6 +111,7 @@ const I18N = {
     label_show_playtime: 'Show playtime (site-wide)',
     label_show_played: 'Show played tag (site-wide)',
     label_show_last_played: 'Show last played date (site-wide)',
+    label_show_developer: 'Show developer (site-wide)',
     label_channel_url: 'Channel URL (shown at the top of the page)',
     editor_title: 'Game visibility',
     view_list: 'List',
@@ -115,6 +120,8 @@ const I18N = {
     sort_name: 'Name',
     sort_playtime: 'Playtime',
     sort_last_played: 'Recently played',
+    sort_developer: 'Developer',
+    sort_publisher: 'Publisher',
     counts: (visible, total) => `${visible} of ${total} shown / ${total - visible} hidden`,
     counts_cards_hint: 'Click a card to toggle visibility.',
     tag_played: 'Played',
@@ -122,6 +129,7 @@ const I18N = {
     playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
     playtime_none: 'Not played',
     last_played: (d) => `Last played: ${d}`,
+    developer: (d) => `Developer: ${d}`,
     stream_placeholder: 'Stream/video URL (optional)',
     hidden_label: 'Hidden',
     label_published: 'Publish the site',
@@ -231,6 +239,7 @@ function applySettingsToInputs() {
   $('set-show-playtime').checked = s.show_playtime !== false;
   $('set-show-played').checked = s.show_played !== false;
   $('set-show-last-played').checked = s.show_last_played !== false;
+  $('set-show-developer').checked = s.show_developer !== false;
   $('set-channel-url').value = s.channel_url ?? '';
   $('published-toggle').checked = state.published;
 }
@@ -316,6 +325,8 @@ function collectSettingsChanges() {
   if (showPlayed !== (s.show_played !== false)) changes.show_played = showPlayed;
   const showLastPlayed = $('set-show-last-played').checked;
   if (showLastPlayed !== (s.show_last_played !== false)) changes.show_last_played = showLastPlayed;
+  const showDeveloper = $('set-show-developer').checked;
+  if (showDeveloper !== (s.show_developer !== false)) changes.show_developer = showDeveloper;
   const channel = $('set-channel-url').value.trim();
   if (channel !== (s.channel_url ?? '')) changes.channel_url = channel;
   if ($('published-toggle').checked !== (s.published === true))
@@ -405,12 +416,12 @@ async function save() {
 function loadDemo() {
   state.catalogRaw = { fetched_at: new Date().toISOString() };
   state.games = [
-    { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true },
-    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false },
-    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo', image: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281' },
-    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true },
-    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true },
-    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true },
+    { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true, developer: 'Valve', publisher: 'Valve' },
+    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false, developer: 'Valve', publisher: 'Valve' },
+    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo', image: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281', developer: 'FromSoftware, Inc.', publisher: 'Bandai Namco Entertainment' },
+    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true, developer: 'Larian Studios', publisher: 'Larian Studios' },
+    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true, developer: 'ConcernedApe', publisher: 'ConcernedApe' },
+    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true, developer: 'Supergiant Games', publisher: 'Supergiant Games' },
     // 画像フォールバック確認用(存在しない appid): header/header_japanese/capsule すべて404→プレースホルダー(REQ-021)
     { appid: 99999999, name: 'Unknown Game (no artwork)', playtime_forever: 0, rtime_last_played: 0, visible: true, played: false, show_playtime: true },
   ];
@@ -420,6 +431,7 @@ function loadDemo() {
     show_playtime: true,
     show_played: true,
     show_last_played: true,
+    show_developer: true,
     channel_url: 'https://www.youtube.com/@demo',
     published: true,
   };
@@ -469,6 +481,18 @@ function formatLastPlayed(epochSeconds) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// developer/publisher などの任意項目で並べる比較関数(REQ-035)。値が無いゲームは常に末尾。
+function compareByField(field, locale) {
+  return (a, b) => {
+    const av = a[field] || '';
+    const bv = b[field] || '';
+    if (!av && !bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return av.localeCompare(bv, locale);
+  };
+}
+
 function filteredGames() {
   const q = state.query.trim().toLowerCase();
   const games = state.games.filter(
@@ -484,6 +508,12 @@ function filteredGames() {
       break;
     case 'last_played':
       games.sort((a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0));
+      break;
+    case 'developer':
+      games.sort(compareByField('developer', locale));
+      break;
+    case 'publisher':
+      games.sort(compareByField('publisher', locale));
       break;
     default:
       games.sort((a, b) => displayName(a).localeCompare(displayName(b), locale));
@@ -592,6 +622,7 @@ function renderList() {
     const metaParts = [];
     if (g.playtime_forever > 0) metaParts.push(t().hours(Math.round(g.playtime_forever / 6) / 10));
     if (g.rtime_last_played > 0) metaParts.push(t().last_played(formatLastPlayed(g.rtime_last_played)));
+    if (g.developer) metaParts.push(t().developer(g.developer));
     metaParts.push(g.appid);
     meta.textContent = metaParts.join(' · ');
     row.appendChild(meta);
@@ -652,6 +683,11 @@ function renderCards() {
       const lastPlayedSpan = document.createElement('span');
       lastPlayedSpan.textContent = t().last_played(formatLastPlayed(g.rtime_last_played));
       meta.appendChild(lastPlayedSpan);
+    }
+    if (g.developer) {
+      const developerSpan = document.createElement('span');
+      developerSpan.textContent = t().developer(g.developer);
+      meta.appendChild(developerSpan);
     }
     body.appendChild(meta);
 
@@ -730,6 +766,7 @@ function render() {
   $('label-show-playtime').textContent = tr.label_show_playtime;
   $('label-show-played').textContent = tr.label_show_played;
   $('label-show-last-played').textContent = tr.label_show_last_played;
+  $('label-show-developer').textContent = tr.label_show_developer;
   $('label-channel-url').textContent = tr.label_channel_url;
   $('editor-title').textContent = tr.editor_title;
   $('view-list').textContent = tr.view_list;
@@ -739,6 +776,8 @@ function render() {
     ['name', tr.sort_name],
     ['playtime', tr.sort_playtime],
     ['last_played', tr.sort_last_played],
+    ['developer', tr.sort_developer],
+    ['publisher', tr.sort_publisher],
   ];
   $('admin-sort').innerHTML = sortOptions
     .map(([v, label]) => `<option value="${v}">${label}</option>`)

@@ -6,6 +6,8 @@ const I18N = {
     sort_name: '名前順',
     sort_playtime: 'プレイ時間順',
     sort_last_played: '最近プレイした順',
+    sort_developer: '開発元順',
+    sort_publisher: '販売元順',
     filter_all: 'すべて',
     filter_played: 'プレイ済み',
     filter_unplayed: '未プレイ',
@@ -17,6 +19,7 @@ const I18N = {
     playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
     playtime_none: '未プレイ',
     last_played: (d) => `最終プレイ: ${d}`,
+    developer: (d) => `開発元: ${d}`,
     updated: (d) => `最終更新: ${d}`,
     unpublished:
       'このサイトはまだ準備中です。(管理者向け: config/settings.jsonc の "published" を true にすると公開されます)',
@@ -30,6 +33,8 @@ const I18N = {
     sort_name: 'Name',
     sort_playtime: 'Playtime',
     sort_last_played: 'Recently played',
+    sort_developer: 'Developer',
+    sort_publisher: 'Publisher',
     filter_all: 'All',
     filter_played: 'Played',
     filter_unplayed: 'Not played',
@@ -41,6 +46,7 @@ const I18N = {
     playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
     playtime_none: 'Not played',
     last_played: (d) => `Last played: ${d}`,
+    developer: (d) => `Developer: ${d}`,
     updated: (d) => `Last updated: ${d}`,
     unpublished:
       'This site is not published yet. (For the owner: set "published" to true in config/settings.jsonc)',
@@ -96,6 +102,18 @@ function formatDate(epochSeconds) {
   return new Date(epochSeconds * 1000).toLocaleDateString(locale);
 }
 
+// developer/publisher などの任意項目で並べる比較関数(REQ-035)。値が無いゲームは常に末尾。
+function compareByField(field, locale) {
+  return (a, b) => {
+    const av = a[field] || '';
+    const bv = b[field] || '';
+    if (!av && !bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return av.localeCompare(bv, locale);
+  };
+}
+
 function sortedFilteredGames() {
   const q = state.query.trim().toLowerCase();
   let games = state.data.games.filter(
@@ -112,6 +130,12 @@ function sortedFilteredGames() {
       break;
     case 'last_played':
       games.sort((a, b) => b.rtime_last_played - a.rtime_last_played);
+      break;
+    case 'developer':
+      games.sort(compareByField('developer', locale));
+      break;
+    case 'publisher':
+      games.sort(compareByField('publisher', locale));
       break;
     default:
       games.sort((a, b) => displayName(a).localeCompare(displayName(b), locale));
@@ -171,6 +195,11 @@ function render() {
   const sortOptions = [['name', tr.sort_name]];
   if (data.site.show_playtime !== false) sortOptions.push(['playtime', tr.sort_playtime]);
   if (data.site.show_last_played !== false) sortOptions.push(['last_played', tr.sort_last_played]);
+  // 開発元/販売元ソートは show_developer OFF なら選択肢から除外する(REQ-029 と同作法、REQ-035)
+  if (data.site.show_developer !== false) {
+    sortOptions.push(['developer', tr.sort_developer]);
+    sortOptions.push(['publisher', tr.sort_publisher]);
+  }
   if (!sortOptions.some(([v]) => v === state.sort)) state.sort = 'name';
   $('sort').hidden = sortOptions.length === 1;
   $('sort').innerHTML = sortOptions
@@ -273,6 +302,11 @@ function render() {
     if (data.site.show_last_played && g.rtime_last_played > 0) {
       const span = document.createElement('span');
       span.textContent = t().last_played(formatDate(g.rtime_last_played));
+      meta.appendChild(span);
+    }
+    if (data.site.show_developer !== false && g.developer) {
+      const span = document.createElement('span');
+      span.textContent = t().developer(g.developer);
       meta.appendChild(span);
     }
     body.appendChild(meta);

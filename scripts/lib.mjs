@@ -61,6 +61,9 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
       if (prev && 'name_ja' in prev) merged.name_ja = prev.name_ja;
       // image(ヘッダー画像URL)も同様にキーの有無で取得試行済みかを判定する(REQ-025)
       if (prev && 'image' in prev) merged.image = prev.image;
+      // developer/publisher も同様にキーの有無で取得試行済みかを判定する(REQ-035)
+      if (prev && 'developer' in prev) merged.developer = prev.developer;
+      if (prev && 'publisher' in prev) merged.publisher = prev.publisher;
       // 配信リンク(管理ページで設定)も維持する
       if (prev?.stream_url) merged.stream_url = prev.stream_url;
       return merged;
@@ -71,14 +74,16 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
 }
 
 /**
- * ストア API からローカライズされたゲーム名とヘッダー画像URLを取得する(REQ-025)。
+ * ストア API からローカライズされたゲーム名・ヘッダー画像URL・開発元/販売元を取得する(REQ-025, REQ-035)。
  * 新しめのタイトルは新CDN(shared.akamai.steamstatic.com)のハッシュ付きURLが正式パスとなり、
  * appid から推測できないため、appdetails の header_image を正として使う。
- * 見つからない場合は { name: null, image: null }(=取得試行済みとしてキャッシュしてよい)。
+ * developer/publisher はそれぞれ developers/publishers 配列の先頭社を採用し、無ければ null。
+ * 見つからない場合は { name: null, image: null, developer: null, publisher: null }
+ * (=取得試行済みとしてキャッシュしてよい)。
  * レート制限(429)時は err.rateLimited = true の例外を投げる。
  */
 export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) {
-  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic`;
+  const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic,developers,publishers`;
   const res = await fetchImpl(url);
   if (res.status === 429 || res.status === 403) {
     const err = new Error(`appdetails rate limited (HTTP ${res.status})`);
@@ -88,10 +93,12 @@ export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) 
   if (!res.ok) throw new Error(`appdetails error: HTTP ${res.status}`);
   const data = await res.json();
   const entry = data?.[String(appid)];
-  if (!entry?.success) return { name: null, image: null };
+  if (!entry?.success) return { name: null, image: null, developer: null, publisher: null };
   return {
     name: entry.data?.name ?? null,
     image: entry.data?.header_image ?? null,
+    developer: entry.data?.developers?.[0] ?? null,
+    publisher: entry.data?.publishers?.[0] ?? null,
   };
 }
 
@@ -148,7 +155,7 @@ export function normalizeStreamUrl(raw) {
 export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, name_ja, played, stream_url, show_playtime, image, ...g }) => {
+    .map(({ visible, name_ja, played, stream_url, show_playtime, image, developer, publisher, ...g }) => {
       // デフォルトと異なる値のみ公開データに含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
       if (played) g.played = true;
@@ -163,6 +170,9 @@ export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
       if (show_playtime === false) g.show_playtime = false;
       // image は取得できた場合(truthy)のみ出力する(null=取得試行済みだが無し、は出力しない, REQ-025)
       if (image) g.image = image;
+      // developer/publisher も同様に取得できた場合のみ出力する(REQ-035)
+      if (developer) g.developer = developer;
+      if (publisher) g.publisher = publisher;
       return g;
     });
 
@@ -182,6 +192,7 @@ export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
       show_playtime: settings.show_playtime !== false,
       show_played: settings.show_played !== false,
       show_last_played: settings.show_last_played !== false,
+      show_developer: settings.show_developer !== false,
       channel_url: channelUrl || '',
     },
     games: visibleGames,
