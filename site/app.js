@@ -166,11 +166,11 @@ function render() {
 
   // コントロール
   $('search').placeholder = tr.search_placeholder;
-  const sortOptions = [
-    ['name', tr.sort_name],
-    ['playtime', tr.sort_playtime],
-    ['last_played', tr.sort_last_played],
-  ];
+  // 非表示にした項目はソート選択肢からも外す(REQ-029)
+  const sortOptions = [['name', tr.sort_name]];
+  if (data.site.show_playtime !== false) sortOptions.push(['playtime', tr.sort_playtime]);
+  if (data.site.show_last_played !== false) sortOptions.push(['last_played', tr.sort_last_played]);
+  if (!sortOptions.some(([v]) => v === state.sort)) state.sort = 'name';
   $('sort').innerHTML = sortOptions
     .map(([v, label]) => `<option value="${v}">${label}</option>`)
     .join('');
