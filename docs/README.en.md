@@ -6,6 +6,10 @@ A template that fetches your owned games from Steam and publishes them as a webs
 
 **See it live**: [public page](https://neo-v-dev.github.io/steam-game-shelf/) / [admin page (UI only, saving disabled)](https://neo-v-dev.github.io/steam-game-shelf/admin.html?demo=1) — a permanent demo with sample data.
 
+<!-- MY_LINKS_START -->
+After the first "Update game list" run, links to your own site will be filled in here automatically (this section is auto-managed)
+<!-- MY_LINKS_END -->
+
 - **Free**: Runs entirely on GitHub's free tier (Actions + Pages). No server needed.
 - **Auto update**: The list refreshes daily; manual refresh is one click.
 - **Admin page**: Edit visibility, played tags, per-game playtime display, stream links, and site settings in your browser, with a thumbnail-card view (default) and a list view. Includes search, sort (name / playtime / recently played), and per-game playtime + last-played info.

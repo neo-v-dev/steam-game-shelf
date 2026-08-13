@@ -47,12 +47,16 @@ jobs:
           STEAM_ID: ${{ secrets.STEAM_ID }}
         run: node scripts/update.mjs
 
+      - name: Update README links
+        if: github.event_name != 'push'
+        run: node scripts/update-readme-links.mjs "$GITHUB_REPOSITORY"
+
       - name: Commit catalog changes
         if: github.event_name != 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/catalog.json
+          git add data/catalog.json README.md docs/README.en.md
           if ! git diff --cached --quiet; then
             git commit -m "Update game catalog"
             git push
