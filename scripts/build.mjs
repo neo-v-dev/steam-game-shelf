@@ -27,7 +27,7 @@ for (const e of excluded) {
       ? 'サイト設定の channel_url'
       : `appid=${e.appid}${e.name ? `(${e.name})` : ''} の stream_url`;
   console.warn(
-    `警告: ${target} が許可外のURL(YouTube/Twitchのみ許可)のため、公開データから除外しました。`
+    `警告: ${target} が許可外のURL(YouTube/Twitch/niconicoのみ許可)のため、公開データから除外しました。`
   );
 }
 

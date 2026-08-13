@@ -100,8 +100,8 @@ export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) 
 /**
  * 配信/チャンネルURLを検証・正規化する。
  * trim → スキーム無しなら https:// を前置 → URLパース(失敗はnull)
- * → https 以外は null → hostname が youtube.com/youtu.be/twitch.tv と完全一致、
- * または .youtube.com/.twitch.tv で終わる場合のみ正規化済みURL文字列を返す。それ以外は null。
+ * → https 以外は null → hostname が youtube.com/youtu.be/twitch.tv/nicovideo.jp/nico.ms と完全一致、
+ * または .youtube.com/.twitch.tv/.nicovideo.jp で終わる場合のみ正規化済みURL文字列を返す。それ以外は null。
  * (site/admin-core.mjs の同名関数と同一ロジック。用途がブラウザ側/Node側で分かれるため複製している)
  */
 export function normalizeStreamUrl(raw) {
@@ -128,8 +128,11 @@ export function normalizeStreamUrl(raw) {
     host === 'youtube.com' ||
     host === 'youtu.be' ||
     host === 'twitch.tv' ||
+    host === 'nicovideo.jp' ||
+    host === 'nico.ms' ||
     host.endsWith('.youtube.com') ||
-    host.endsWith('.twitch.tv');
+    host.endsWith('.twitch.tv') ||
+    host.endsWith('.nicovideo.jp');
   if (!allowed) return null;
 
   return url.toString();

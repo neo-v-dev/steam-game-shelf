@@ -81,7 +81,7 @@ const I18N = {
       '保存中に他の更新(自動更新など)と競合しました。もう一度「読み込む」からやり直してください。',
     // REQ-031: 許可外URL(stream_url / channel_url)を保存しようとしたときのエラー
     channel_url_name: 'チャンネルURL',
-    err_bad_url: (targets) => `YouTube / Twitch のURLのみ設定できます: ${targets.join('、')}`,
+    err_bad_url: (targets) => `YouTube / Twitch / niconico のURLのみ設定できます: ${targets.join('、')}`,
     hours: (h) => `${h} 時間`,
   },
   en: {
@@ -148,7 +148,7 @@ const I18N = {
       'Your save conflicted with another update (e.g. the daily refresh). Please load again and retry.',
     // REQ-031: shown when trying to save a stream_url / channel_url outside the allowed domains
     channel_url_name: 'channel URL',
-    err_bad_url: (targets) => `Only YouTube / Twitch URLs are allowed: ${targets.join(', ')}`,
+    err_bad_url: (targets) => `Only YouTube / Twitch / niconico URLs are allowed: ${targets.join(', ')}`,
     hours: (h) => `${h} hrs`,
   },
 };

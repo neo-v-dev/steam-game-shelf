@@ -148,6 +148,25 @@ test('normalizeStreamUrl U1: 拒否されるURL(許可外ドメイン・危険�
   assert.equal(normalizeStreamUrl('   '), null);
 });
 
+// ---- normalizeStreamUrl: niconico 許可(REQ-034) ----
+
+test('normalizeStreamUrl REQ-034: niconico(nicovideo.jp/nico.ms)を許可、そのサブドメイン・スキーム補完含む', () => {
+  assert.equal(
+    normalizeStreamUrl('https://www.nicovideo.jp/watch/sm1'),
+    'https://www.nicovideo.jp/watch/sm1'
+  );
+  assert.equal(
+    normalizeStreamUrl('https://live.nicovideo.jp/watch/lv1'),
+    'https://live.nicovideo.jp/watch/lv1'
+  );
+  assert.equal(normalizeStreamUrl('https://nico.ms/sm1'), 'https://nico.ms/sm1');
+  assert.equal(normalizeStreamUrl('nicovideo.jp/watch/sm1'), 'https://nicovideo.jp/watch/sm1');
+});
+
+test('normalizeStreamUrl REQ-034: nicovideo.jp になりすました拒否ホストを拒否', () => {
+  assert.equal(normalizeStreamUrl('https://nicovideo.jp.evil.com/'), null);
+});
+
 // ---- setJsoncValue: $&/$' を含む値(REQ-033, U3) ----
 
 test("setJsoncValue U3: 値に $& や $' を含んでいても文字どおり書き込まれる(置換パターンとして解釈されない)", () => {

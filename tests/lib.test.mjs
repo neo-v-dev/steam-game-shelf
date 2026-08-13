@@ -129,6 +129,27 @@ test('normalizeStreamUrl U1: 拒否されるURL(許可外ドメイン・危険�
   assert.equal(normalizeStreamUrl('   '), null);
 });
 
+// ---- normalizeStreamUrl: niconico 許可(REQ-034) ----
+
+test('normalizeStreamUrl REQ-034: niconico(nicovideo.jp/nico.ms)を許可、そのサブドメイン・スキーム補完含む', () => {
+  assert.equal(
+    normalizeStreamUrl('https://www.nicovideo.jp/watch/sm1'),
+    'https://www.nicovideo.jp/watch/sm1'
+  );
+  assert.equal(
+    normalizeStreamUrl('https://live.nicovideo.jp/watch/lv1'),
+    'https://live.nicovideo.jp/watch/lv1'
+  );
+  assert.equal(normalizeStreamUrl('https://nico.ms/sm1'), 'https://nico.ms/sm1');
+  // スキーム無しは https:// を補って許可
+  assert.equal(normalizeStreamUrl('nicovideo.jp/watch/sm1'), 'https://nicovideo.jp/watch/sm1');
+});
+
+test('normalizeStreamUrl REQ-034: nicovideo.jp になりすました拒否ホストを拒否', () => {
+  // nicovideo.jp のサブドメインに見えるが実際は evil.com のサブドメイン(なりすまし)
+  assert.equal(normalizeStreamUrl('https://nicovideo.jp.evil.com/'), null);
+});
+
 // ---- buildPublicData ----
 
 test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外・show_playtime falseのみ出力・image選択的出力)', () => {
