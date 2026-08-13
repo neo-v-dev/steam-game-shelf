@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyToken, setJsoncValue, parseJsonc } from '../site/admin-core.mjs';
+import { verifyToken, setJsoncValue, parseJsonc, actionsUrl } from '../site/admin-core.mjs';
 
 // 呼び出し順にレスポンスを返す簡易モック fetch
 function fakeFetch(responses) {
@@ -117,4 +117,10 @@ test('setJsoncValue T7c: 文字列値の中の "//"(URL)を壊さない', () => 
   const out2 = setJsoncValue(text2, 'b', 2);
   assert.equal(parseJsonc(out2).a, 'https://example.com/x');
   assert.equal(parseJsonc(out2).b, 2);
+});
+
+// ---- actionsUrl (U2) ----
+
+test('actionsUrl U2: owner/repo から Update game list ワークフローの実行ページURLを組み立てる', () => {
+  assert.equal(actionsUrl('o', 'r'), 'https://github.com/o/r/actions/workflows/update.yml');
 });

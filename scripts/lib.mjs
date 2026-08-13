@@ -13,6 +13,8 @@ export async function fetchOwnedGames(apiKey, steamId, fetchImpl = fetch) {
     steamid: steamId,
     include_appinfo: '1',
     include_played_free_games: '1',
+    // 既定でオンにされる「未審査アプリの除外」をOFFにする(取得漏れ是正, REQ-020)
+    skip_unvetted_apps: 'false',
     format: 'json',
   });
   const res = await fetchImpl(`${API_BASE}?${params}`);

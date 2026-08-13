@@ -6,7 +6,14 @@
 // 読み込み時にトークンの有効性と書き込み権限を検証してから catalog を取得する(admin-core.mjs)。
 // ?demo=1 を付けるとサンプルデータで操作感を試せる(保存は無効)。
 
-import { parseJsonc, setJsoncValue, encodeContent, decodeContent, verifyToken } from './admin-core.mjs';
+import {
+  parseJsonc,
+  setJsoncValue,
+  encodeContent,
+  decodeContent,
+  verifyToken,
+  actionsUrl,
+} from './admin-core.mjs';
 
 const I18N = {
   ja: {
@@ -20,6 +27,9 @@ const I18N = {
       'GitHub の Settings → Developer settings → Fine-grained personal access tokens で作成。対象をこのリポジトリのみに限定し、権限は Contents: Read and write だけを付与してください。トークンはこのブラウザ内にのみ保存されます。',
     load: '読み込む',
     loading: '読み込み中…',
+    loading_verify: 'トークンを検証しています…',
+    loading_fetch: 'データを読み込んでいます…',
+    open_actions: 'Actions を開く',
     settings_title: 'サイト設定',
     label_site_title: 'サイト名',
     label_default_lang: '初期表示言語',
@@ -33,10 +43,16 @@ const I18N = {
     view_list: 'リスト',
     view_cards: 'カード',
     search_placeholder: 'ゲーム名で絞り込み…',
+    sort_name: '名前順',
+    sort_playtime: 'プレイ時間順',
+    sort_last_played: '最近プレイした順',
     counts: (visible, total) => `${total} 本中 ${visible} 本を表示 / ${total - visible} 本を非表示`,
     counts_cards_hint: 'カードをクリックで表示/非表示を切り替え',
     tag_played: 'プレイ済み',
     tag_show_playtime: '時間表示',
+    playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
+    playtime_none: '未プレイ',
+    last_played: (d) => `最終プレイ: ${d}`,
     stream_placeholder: '配信/動画URL(任意)',
     hidden_label: '非表示',
     label_published: 'サイトを公開する',
@@ -48,7 +64,8 @@ const I18N = {
     err_no_repo: 'リポジトリを owner/repository の形式で入力してください。',
     err_no_token: 'アクセストークンを入力してください。',
     err_auth: 'トークンが無効か権限が不足しています。トークンと権限(Contents: Read and write)を確認してください。',
-    err_token_invalid: 'アクセストークンが無効です。トークンを確認してください。',
+    err_token_invalid:
+      'アクセストークンが無効です。コピーが途中で切れていないか確認し、貼り直してください。',
     err_no_write:
       'このトークンには書き込み権限がありません。Fine-grained PAT の Contents 権限を「Read and write」に設定してください。',
     err_rate_limit: 'GitHub API のレート制限に達しました。しばらく待ってから再度お試しください。',
@@ -73,6 +90,9 @@ const I18N = {
       'Create one at GitHub Settings → Developer settings → Fine-grained personal access tokens. Limit it to this repository only, with the Contents: Read and write permission. The token is stored only in this browser.',
     load: 'Load',
     loading: 'Loading…',
+    loading_verify: 'Verifying token…',
+    loading_fetch: 'Loading data…',
+    open_actions: 'Open Actions',
     settings_title: 'Site settings',
     label_site_title: 'Site title',
     label_default_lang: 'Default language',
@@ -86,10 +106,16 @@ const I18N = {
     view_list: 'List',
     view_cards: 'Cards',
     search_placeholder: 'Filter by title…',
+    sort_name: 'Name',
+    sort_playtime: 'Playtime',
+    sort_last_played: 'Recently played',
     counts: (visible, total) => `${visible} of ${total} shown / ${total - visible} hidden`,
     counts_cards_hint: 'Click a card to toggle visibility.',
     tag_played: 'Played',
     tag_show_playtime: 'Playtime',
+    playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
+    playtime_none: 'Not played',
+    last_played: (d) => `Last played: ${d}`,
     stream_placeholder: 'Stream/video URL (optional)',
     hidden_label: 'Hidden',
     label_published: 'Publish the site',
@@ -101,7 +127,8 @@ const I18N = {
     err_no_repo: 'Enter the repository as owner/repository.',
     err_no_token: 'Enter your access token.',
     err_auth: 'The token is invalid or lacks permission. Check the token and its Contents: Read and write permission.',
-    err_token_invalid: 'The access token is invalid. Please check it.',
+    err_token_invalid:
+      "The access token is invalid. Check that it wasn't cut off when copying, and paste it again.",
     err_no_write:
       'This token does not have write access. Set the Contents permission to "Read and write" on your fine-grained PAT.',
     err_rate_limit: 'GitHub API rate limit reached. Please wait and try again.',
@@ -130,6 +157,7 @@ const state = {
   settingsSha: null,
   published: false,
   query: '',
+  sort: 'name',         // 'name' | 'playtime' | 'last_played'(REQ-023、初期は名前順)
   loaded: false,
 };
 
@@ -198,13 +226,14 @@ function applySettingsToInputs() {
 }
 
 async function load() {
-  setStatus('');
+  // load() フロー中のメッセージは全て setup-status 側に出す(REQ-019。保存系は既存 #status のまま)
+  setSetupStatus('');
   if (DEMO) {
     loadDemo();
     return;
   }
-  if (!repoParts()) return setStatus(t().err_no_repo, true);
-  if (!$('token-input').value.trim()) return setStatus(t().err_no_token, true);
+  if (!repoParts()) return setSetupStatus(t().err_no_repo, true);
+  if (!$('token-input').value.trim()) return setSetupStatus(t().err_no_token, true);
 
   $('load-button').disabled = true;
   $('load-button').textContent = t().loading;
@@ -213,6 +242,7 @@ async function load() {
     // 保存時まで発覚しない現状UIの是正のため、ここで通らなければ中断する。
     const { owner, repo } = repoParts();
     const token = $('token-input').value.trim();
+    setSetupStatus(t().loading_verify);
     const verify = await verifyToken(fetch, owner, repo, token);
     if (!verify.ok) {
       const messages = {
@@ -221,12 +251,17 @@ async function load() {
         rate_limit: t().err_rate_limit,
         no_write: t().err_no_write,
       };
-      setStatus(messages[verify.reason] ?? t().err_auth, true);
+      setSetupStatus(messages[verify.reason] ?? t().err_auth, true);
       return;
     }
 
+    setSetupStatus(t().loading_fetch);
     const catalog = await getFile('data/catalog.json');
-    if (!catalog) throw new Error(t().err_no_catalog);
+    if (!catalog) {
+      // Update game list が未実行のケース: Actions への導線を添える(REQ-019)
+      setSetupStatus(t().err_no_catalog, true, actionsUrl(owner, repo));
+      return;
+    }
     const settings = await getFile('config/settings.jsonc');
 
     state.catalogRaw = JSON.parse(catalog.text);
@@ -247,9 +282,10 @@ async function load() {
     $('editor').hidden = false;
     applySettingsToInputs();
     render();
+    setSetupStatus('');
   } catch (err) {
     console.error(err);
-    setStatus(t().err_load(err.message), true);
+    setSetupStatus(t().err_load(err.message), true);
   } finally {
     $('load-button').disabled = false;
     $('load-button').textContent = t().load;
@@ -329,12 +365,14 @@ async function save() {
 function loadDemo() {
   state.catalogRaw = { fetched_at: new Date().toISOString() };
   state.games = [
-    { appid: 570, name: 'Dota 2', playtime_forever: 12345, visible: true, played: true, show_playtime: true },
-    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, visible: true, played: true, show_playtime: false },
-    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo' },
-    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, visible: true, played: false, show_playtime: true },
-    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, visible: false, played: false, show_playtime: true },
-    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, visible: true, played: true, show_playtime: true },
+    { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true },
+    { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false },
+    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo' },
+    { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true },
+    { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true },
+    { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true },
+    // 画像フォールバック確認用(存在しない appid): header/header_japanese/capsule すべて404→プレースホルダー(REQ-021)
+    { appid: 99999999, name: 'Unknown Game (no artwork)', playtime_forever: 0, rtime_last_played: 0, visible: true, played: false, show_playtime: true },
   ];
   state.settings = {
     site_title: 'Demo Game Shelf',
@@ -360,23 +398,64 @@ function displayName(g) {
   return state.lang === 'ja' && g.name_ja ? g.name_ja : g.name;
 }
 
-function headerImageUrl(appid) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+// サムネイル候補チェーン(REQ-021)。ja: header_japanese→header→capsule_616x353 / en: header→capsule_616x353
+function headerImageUrls(appid) {
+  const base = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}`;
+  const files =
+    state.lang === 'ja'
+      ? ['header_japanese.jpg', 'header.jpg', 'capsule_616x353.jpg']
+      : ['header.jpg', 'capsule_616x353.jpg'];
+  return files.map((f) => `${base}/${f}`);
+}
+
+function formatLastPlayed(epochSeconds) {
+  // 公開ページと違い、テスト・実装ともに扱いやすい固定書式(YYYY/M/D)を使う
+  const d = new Date(epochSeconds * 1000);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function filteredGames() {
   const q = state.query.trim().toLowerCase();
-  return state.games.filter(
+  const games = state.games.filter(
     (g) =>
       g.name.toLowerCase().includes(q) ||
       (g.name_ja && g.name_ja.toLowerCase().includes(q))
   );
+  // ソート(REQ-023: 公開ページと同ロジック。名前=displayName+ja/en照合、プレイ時間・最終プレイは降順)
+  const locale = state.lang === 'ja' ? 'ja' : 'en';
+  switch (state.sort) {
+    case 'playtime':
+      games.sort((a, b) => b.playtime_forever - a.playtime_forever);
+      break;
+    case 'last_played':
+      games.sort((a, b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0));
+      break;
+    default:
+      games.sort((a, b) => displayName(a).localeCompare(displayName(b), locale));
+  }
+  return games;
 }
 
 function setStatus(msg, isError = false) {
   const el = $('status');
   el.textContent = msg;
   el.classList.toggle('error', isError);
+}
+
+// 接続セクション(#setup)専用のステータス表示(REQ-019)。
+// actionsHref を渡すと「Actions を開く」リンクボタンを表示する(catalog 未取得時)。
+function setSetupStatus(msg, isError = false, actionsHref = null) {
+  const el = $('setup-status');
+  el.textContent = msg;
+  el.classList.toggle('error', isError);
+  const link = $('setup-actions-link');
+  if (actionsHref) {
+    link.href = actionsHref;
+    link.textContent = t().open_actions;
+    link.hidden = false;
+  } else {
+    link.hidden = true;
+  }
 }
 
 function makeChip(label, isOn, onToggle, isEnabled) {
@@ -454,9 +533,12 @@ function renderList() {
 
     const meta = document.createElement('span');
     meta.className = 'admin-row-meta';
-    meta.textContent =
-      (g.playtime_forever > 0 ? t().hours(Math.round(g.playtime_forever / 6) / 10) + ' · ' : '') +
-      g.appid;
+    // 最終プレイ日を追加(REQ-024。rtime_last_played=0 は省略)
+    const metaParts = [];
+    if (g.playtime_forever > 0) metaParts.push(t().hours(Math.round(g.playtime_forever / 6) / 10));
+    if (g.rtime_last_played > 0) metaParts.push(t().last_played(formatLastPlayed(g.rtime_last_played)));
+    metaParts.push(g.appid);
+    meta.textContent = metaParts.join(' · ');
     row.appendChild(meta);
 
     list.appendChild(row);
@@ -474,10 +556,17 @@ function renderCards() {
     img.className = 'card-image';
     img.loading = 'lazy';
     img.alt = g.name;
-    img.src = headerImageUrl(g.appid);
+    const imgCandidates = headerImageUrls(g.appid);
+    let imgIndex = 0;
+    img.src = imgCandidates[imgIndex];
     img.onerror = () => {
-      img.remove();
-      card.classList.add('no-image');
+      imgIndex += 1;
+      if (imgIndex < imgCandidates.length) {
+        img.src = imgCandidates[imgIndex];
+      } else {
+        img.remove();
+        card.classList.add('no-image');
+      }
     };
     card.appendChild(img);
 
@@ -494,6 +583,22 @@ function renderCards() {
     name.className = 'card-name';
     name.textContent = displayName(g);
     body.appendChild(name);
+
+    // プレイ時間+最終プレイ日(REQ-024。未プレイは「未プレイ」、rtime_last_played=0 は省略)
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+    const playtimeSpan = document.createElement('span');
+    playtimeSpan.textContent =
+      g.playtime_forever > 0
+        ? t().playtime(Math.round((g.playtime_forever / 60) * 10) / 10)
+        : t().playtime_none;
+    meta.appendChild(playtimeSpan);
+    if (g.rtime_last_played > 0) {
+      const lastPlayedSpan = document.createElement('span');
+      lastPlayedSpan.textContent = t().last_played(formatLastPlayed(g.rtime_last_played));
+      meta.appendChild(lastPlayedSpan);
+    }
+    body.appendChild(meta);
 
     const chips = document.createElement('div');
     chips.className = 'admin-card-chips';
@@ -574,6 +679,15 @@ function render() {
   $('view-list').textContent = tr.view_list;
   $('view-cards').textContent = tr.view_cards;
   $('admin-search').placeholder = tr.search_placeholder;
+  const sortOptions = [
+    ['name', tr.sort_name],
+    ['playtime', tr.sort_playtime],
+    ['last_played', tr.sort_last_played],
+  ];
+  $('admin-sort').innerHTML = sortOptions
+    .map(([v, label]) => `<option value="${v}">${label}</option>`)
+    .join('');
+  $('admin-sort').value = state.sort;
   $('label-published').textContent = tr.label_published;
   $('save-button').textContent = tr.save;
   $('back-link').textContent = tr.back;
@@ -615,6 +729,10 @@ function init() {
   $('view-cards').addEventListener('click', () => setView('cards'));
   $('admin-search').addEventListener('input', (e) => {
     state.query = e.target.value;
+    renderGames();
+  });
+  $('admin-sort').addEventListener('change', (e) => {
+    state.sort = e.target.value;
     renderGames();
   });
   // 全体スイッチ変更時、対応するチップのロック状態を即時反映(REQ-018)

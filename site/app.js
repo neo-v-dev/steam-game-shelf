@@ -62,8 +62,14 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const t = () => I18N[state.lang];
 
-function headerImageUrl(appid) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+// サムネイル候補チェーン(REQ-021)。ja: header_japanese→header→capsule_616x353 / en: header→capsule_616x353
+function headerImageUrls(appid) {
+  const base = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}`;
+  const files =
+    state.lang === 'ja'
+      ? ['header_japanese.jpg', 'header.jpg', 'capsule_616x353.jpg']
+      : ['header.jpg', 'capsule_616x353.jpg'];
+  return files.map((f) => `${base}/${f}`);
 }
 
 // 日本語表示時は邦題(あれば)、英語表示時は原題を返す
@@ -194,10 +200,17 @@ function render() {
     img.className = 'card-image';
     img.loading = 'lazy';
     img.alt = g.name;
-    img.src = headerImageUrl(g.appid);
+    const imgCandidates = headerImageUrls(g.appid);
+    let imgIndex = 0;
+    img.src = imgCandidates[imgIndex];
     img.onerror = () => {
-      img.remove();
-      card.classList.add('no-image');
+      imgIndex += 1;
+      if (imgIndex < imgCandidates.length) {
+        img.src = imgCandidates[imgIndex];
+      } else {
+        img.remove();
+        card.classList.add('no-image');
+      }
     };
     card.appendChild(img);
 

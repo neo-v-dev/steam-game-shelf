@@ -3,7 +3,24 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeCatalog, buildPublicData, parseJsonc, fetchLocalizedName } from '../scripts/lib.mjs';
+import { mergeCatalog, buildPublicData, parseJsonc, fetchLocalizedName, fetchOwnedGames } from '../scripts/lib.mjs';
+
+// ---- fetchOwnedGames ----
+
+test('fetchOwnedGames: 送信URLに skip_unvetted_apps=false が含まれる(U1)', async () => {
+  let requestedUrl = null;
+  const fetchImpl = async (url) => {
+    requestedUrl = url;
+    return {
+      ok: true,
+      json: async () => ({ response: { games: [] } }),
+    };
+  };
+  await fetchOwnedGames('key', '7656119', fetchImpl);
+  assert.ok(requestedUrl, 'fetch が呼ばれること');
+  const params = new URL(requestedUrl).searchParams;
+  assert.equal(params.get('skip_unvetted_apps'), 'false');
+});
 
 // ---- mergeCatalog ----
 
@@ -192,4 +209,48 @@ test('fetchLocalizedName: 429 は rateLimited フラグ付きの例外を投げ�
     () => fetchLocalizedName(1, 'japanese', fetchImpl),
     (err) => err.rateLimited === true
   );
+});
+
+// ---- ソート回帰(REQ-022, U3) ----
+// app.js / admin.js の displayName + localeCompare('ja') をそのまま再現する(実装変更なし、design.md指定)。
+// displayName: 日本語表示時は name_ja(邦題)があればそれを、なければ name(原題)を使う。
+function displayNameJa(g) {
+  return g.name_ja ? g.name_ja : g.name;
+}
+function sortByDisplayNameJa(games) {
+  return [...games].sort((a, b) => displayNameJa(a).localeCompare(displayNameJa(b), 'ja'));
+}
+
+test('ソート回帰: 邦題優先(name_ja があればそちらで比較に使う)', () => {
+  // 'Beta' という原題どうしの2本だが、一方だけ邦題 'あ' を持つ。原題だけで比較すれば Alpha<Beta の順だが、
+  // 邦題優先なら 'あ' が比較対象になり、Zoo(原題のみ, 'Z')より後ろに来るはず(ja 照合で確認)。
+  const games = [
+    { name: 'Zoo' },
+    { name: 'Beta', name_ja: 'あ' }, // 邦題があるので比較には 'あ' が使われるべき
+  ];
+  const sorted = sortByDisplayNameJa(games);
+  assert.deepEqual(
+    sorted.map((g) => g.name),
+    ['Zoo', 'Beta'],
+    '邦題 "あ" が比較に使われ、ja 照合で "Zoo" より後ろになる(原題 "Beta" を使うなら Beta が先頭のはず)'
+  );
+});
+
+test('ソート回帰: 日本語照合(Intl.Collator/localeCompare "ja")を用いる(U3データセット)', () => {
+  // work package (docs/packages/req-019-024-feedback-and-fixes.md) の U3 記載データセット。
+  const games = [
+    { name: 'Zebra' },
+    { name: 'Apple', name_ja: 'あっぷる' },
+    { name: 'Kanji', name_ja: '漢字' },
+  ];
+  const sorted = sortByDisplayNameJa(games).map((g) => displayNameJa(g));
+
+  // 実測(このNode環境, ICU78.3, full-icu)では 'Zebra'.localeCompare('あっぷる','ja') === -1 であり、
+  // ラテン文字はひらがな/漢字より前に並ぶ(Intl.Collator('ja').resolvedOptions().collation は 'default')。
+  // これは複数のロケール変種(ja / ja-JP / ja-u-co-unihan / ja-u-co-phonebk / ja-u-kr-jpan-latn 等)でも
+  // 再現し、Node固有の挙動ではない(ブラウザ同様ICU/CLDRの標準実装)。
+  // 一方、work package の受け入れ基準 U3 は「'あっぷる' が 'Zebra' より前に来ること」を要求しており、
+  // 実装変更なし(displayName + localeCompare('ja'))という REQ-022 の前提のもとでは両立しない。
+  // → 詳細は報告書の「発見した注意点・罠」「暫定判断」を参照。ここでは実測される真の挙動を固定する。
+  assert.deepEqual(sorted, ['Zebra', 'あっぷる', '漢字']);
 });

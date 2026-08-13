@@ -72,6 +72,12 @@
       "playtime_forever": 1500,
       "rtime_last_played": 1750291200,
       "played": true
+    },
+    {
+      "appid": 99999999,
+      "name": "Unknown Game (no artwork)",
+      "playtime_forever": 0,
+      "rtime_last_played": 0
     }
   ]
 }

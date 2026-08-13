@@ -76,3 +76,10 @@ export async function verifyToken(fetchImpl, owner, repo, token) {
   if (blobRes.status === 201) return { ok: true };
   return { ok: false, reason: 'no_write' };
 }
+
+// ---- Actions ページへのリンク(REQ-019: catalog未取得時の導線) ----
+
+/** リポジトリの「Update game list」ワークフロー実行ページのURLを組み立てる。 */
+export function actionsUrl(owner, repo) {
+  return `https://github.com/${owner}/${repo}/actions/workflows/update.yml`;
+}
