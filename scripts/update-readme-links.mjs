@@ -11,6 +11,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const MARKER_START = '<!-- MY_LINKS_START -->';
 const MARKER_END = '<!-- MY_LINKS_END -->';
+const DEMO_START = '<!-- DEMO_LINK_START -->';
+const DEMO_END = '<!-- DEMO_LINK_END -->';
 
 /**
  * owner/repo から、GitHub Pages の公開URLを組み立てる。
@@ -47,6 +49,24 @@ export function replaceLinkSection(text, publicUrl, lang) {
   return before + body + after;
 }
 
+/**
+ * text 内のデモリンク区間( <!-- DEMO_LINK_START --> 〜 <!-- DEMO_LINK_END --> )を、
+ * マーカー自体を含めて丸ごと削除する(利用者コピーではデモ紹介文が不要なため)。
+ * マーカーが見つからない場合(既に削除済み、またはテンプレート側で使わない場合)は
+ * text をそのまま返す。区間外の文字列は一切変更しない(前後の空行なども保持する)。
+ * 何度適用しても結果が変わらない(冪等)。
+ */
+export function removeDemoSection(text) {
+  const startIdx = text.indexOf(DEMO_START);
+  const endIdx = text.indexOf(DEMO_END);
+  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+    return text;
+  }
+  const before = text.slice(0, startIdx);
+  const after = text.slice(endIdx + DEMO_END.length);
+  return before + after;
+}
+
 // ---- CLI ----
 // テストからは上記の pure 関数のみを import して使うため、CLI 実行部分は
 // 「このファイルが直接実行された場合」だけ動くようガードする。
@@ -71,11 +91,14 @@ if (isMain) {
 
   for (const { path, lang } of targets) {
     const before = readFileSync(path, 'utf8');
-    const after = replaceLinkSection(before, publicUrl, lang);
-    if (after === null) {
-      console.log(`スキップ(マーカー無し): ${path}`);
-      continue;
+    // MY_LINKS 置換とデモリンク区間の削除を両方適用する。
+    // マーカーが無い場合(利用者が意図的に消した等)はその変換をスキップして続行する。
+    const linksResult = replaceLinkSection(before, publicUrl, lang);
+    if (linksResult === null) {
+      console.log(`スキップ(MY_LINKSマーカー無し): ${path}`);
     }
+    const afterLinks = linksResult === null ? before : linksResult;
+    const after = removeDemoSection(afterLinks);
     if (after === before) {
       console.log(`差分なし: ${path}`);
       continue;

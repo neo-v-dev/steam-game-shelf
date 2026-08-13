@@ -38,6 +38,7 @@ const I18N = {
       'それぞれOFFにすると、カードだけでなく上部の統計や絞り込みにも反映されます(プレイ時間: 統計の合計時間表示。プレイ済み: 「プレイ済み/未プレイ」絞り込み)。ゲームごとの値は保持され、ONに戻すと元どおり反映されます。',
     label_show_playtime: 'プレイ時間を表示(サイト全体)',
     label_show_played: 'プレイ済みタグを表示(サイト全体)',
+    label_show_last_played: '最終プレイ日を表示(サイト全体)',
     label_channel_url: 'チャンネルURL(ページ上部にリンク表示)',
     editor_title: 'ゲームの表示設定',
     view_list: 'リスト',
@@ -101,6 +102,7 @@ const I18N = {
       'Turning either of these off affects more than the cards — it also changes the stats bar and the played/not-played filter at the top (playtime: the total-hours stat; played: the played/not-played filter). Per-game values are preserved and take effect again when turned back on.',
     label_show_playtime: 'Show playtime (site-wide)',
     label_show_played: 'Show played tag (site-wide)',
+    label_show_last_played: 'Show last played date (site-wide)',
     label_channel_url: 'Channel URL (shown at the top of the page)',
     editor_title: 'Game visibility',
     view_list: 'List',
@@ -221,6 +223,7 @@ function applySettingsToInputs() {
   $('set-default-lang').value = s.default_lang === 'en' ? 'en' : 'ja';
   $('set-show-playtime').checked = s.show_playtime !== false;
   $('set-show-played').checked = s.show_played !== false;
+  $('set-show-last-played').checked = s.show_last_played !== false;
   $('set-channel-url').value = s.channel_url ?? '';
   $('published-toggle').checked = state.published;
 }
@@ -304,6 +307,8 @@ function collectSettingsChanges() {
   if (showPlaytime !== (s.show_playtime !== false)) changes.show_playtime = showPlaytime;
   const showPlayed = $('set-show-played').checked;
   if (showPlayed !== (s.show_played !== false)) changes.show_played = showPlayed;
+  const showLastPlayed = $('set-show-last-played').checked;
+  if (showLastPlayed !== (s.show_last_played !== false)) changes.show_last_played = showLastPlayed;
   const channel = $('set-channel-url').value.trim();
   if (channel !== (s.channel_url ?? '')) changes.channel_url = channel;
   if ($('published-toggle').checked !== (s.published === true))
@@ -379,6 +384,7 @@ function loadDemo() {
     default_lang: 'ja',
     show_playtime: true,
     show_played: true,
+    show_last_played: true,
     channel_url: 'https://www.youtube.com/@demo',
     published: true,
   };
@@ -688,6 +694,7 @@ function render() {
   $('help-display-items').textContent = tr.help_display_items;
   $('label-show-playtime').textContent = tr.label_show_playtime;
   $('label-show-played').textContent = tr.label_show_played;
+  $('label-show-last-played').textContent = tr.label_show_last_played;
   $('label-channel-url').textContent = tr.label_channel_url;
   $('editor-title').textContent = tr.editor_title;
   $('view-list').textContent = tr.view_list;

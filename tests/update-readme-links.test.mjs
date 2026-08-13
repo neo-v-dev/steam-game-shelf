@@ -3,7 +3,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSiteUrl, replaceLinkSection } from '../scripts/update-readme-links.mjs';
+import {
+  buildSiteUrl,
+  replaceLinkSection,
+  removeDemoSection,
+} from '../scripts/update-readme-links.mjs';
 
 // ---- buildSiteUrl ----
 
@@ -84,6 +88,46 @@ test('replaceLinkSection: 冪等性(en)(U3)', () => {
   const once = replaceLinkSection(SAMPLE_EN, url, 'en');
   const twice = replaceLinkSection(once, url, 'en');
   assert.equal(twice, once);
+});
+
+// ---- removeDemoSection ----
+
+const SAMPLE_WITH_DEMO = [
+  '# Steam Game Shelf',
+  '',
+  '<!-- DEMO_LINK_START -->',
+  '**デモを見る**: [公開ページ](https://example.com/)',
+  '<!-- DEMO_LINK_END -->',
+  '',
+  '## 必要なもの',
+].join('\n');
+
+test('removeDemoSection: マーカー区間(マーカー含む)が削除され、区間外は不変(U1)', () => {
+  const result = removeDemoSection(SAMPLE_WITH_DEMO);
+  assert.ok(!result.includes('DEMO_LINK_START'));
+  assert.ok(!result.includes('DEMO_LINK_END'));
+  assert.ok(!result.includes('デモを見る'));
+  // 区間外(マーカーより前・より後)は変更されない
+  assert.ok(result.startsWith('# Steam Game Shelf\n\n'));
+  assert.ok(result.endsWith('\n\n## 必要なもの'));
+});
+
+test('removeDemoSection: 冪等 — 削除後に再適用しても同一文字列(U2)', () => {
+  const once = removeDemoSection(SAMPLE_WITH_DEMO);
+  const twice = removeDemoSection(once);
+  assert.equal(twice, once);
+});
+
+test('removeDemoSection: マーカーが無い文字列は無変更(U2)', () => {
+  const noMarker = '# Steam Game Shelf\n\n本文のみ、マーカー無し。\n';
+  assert.equal(removeDemoSection(noMarker), noMarker);
+});
+
+test('removeDemoSection: 開始マーカーのみ・終了マーカーのみの壊れたケースも無変更', () => {
+  const onlyStart = '# Title\n<!-- DEMO_LINK_START -->\n本文\n';
+  const onlyEnd = '# Title\n本文\n<!-- DEMO_LINK_END -->\n';
+  assert.equal(removeDemoSection(onlyStart), onlyStart);
+  assert.equal(removeDemoSection(onlyEnd), onlyEnd);
 });
 
 // テスト内で期待する挿入文言の断片を作るヘルパー(実装の正確な文言はソース側で管理する)

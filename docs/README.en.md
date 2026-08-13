@@ -4,7 +4,9 @@
 
 A template that fetches your owned games from Steam and publishes them as a website on GitHub Pages. Designed for streamers who want to share their game library with viewers.
 
+<!-- DEMO_LINK_START -->
 **See it live**: [public page](https://neo-v-dev.github.io/steam-game-shelf/) / [admin page (UI only, saving disabled)](https://neo-v-dev.github.io/steam-game-shelf/admin.html?demo=1) — a permanent demo with sample data.
+<!-- DEMO_LINK_END -->
 
 <!-- MY_LINKS_START -->
 After the first "Update game list" run, links to your own site will be filled in here automatically (this section is auto-managed)
