@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeCatalog, buildPublicData, parseJsonc, fetchLocalizedName, fetchOwnedGames } from '../scripts/lib.mjs';
+import { mergeCatalog, buildPublicData, parseJsonc, fetchAppInfo, fetchOwnedGames } from '../scripts/lib.mjs';
 
 // ---- fetchOwnedGames ----
 
@@ -24,7 +24,7 @@ test('fetchOwnedGames: 送信URLに skip_unvetted_apps=false が含まれる(U1)
 
 // ---- mergeCatalog ----
 
-test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/stream_url を引き継ぐ', () => {
+test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/image/stream_url を引き継ぐ', () => {
   const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
   const prev = {
     games: [
@@ -35,6 +35,7 @@ test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/stre
         played: false, // プレイ時間>0だが手動でOFFにされている想定
         show_playtime: false,
         name_ja: 'ゲームA',
+        image: 'https://example.com/header.jpg',
         stream_url: 'https://example.com/stream',
       },
     ],
@@ -46,8 +47,24 @@ test('mergeCatalog: 既存ゲームの visible/played/show_playtime/name_ja/stre
   assert.equal(g.played, false);
   assert.equal(g.show_playtime, false);
   assert.equal(g.name_ja, 'ゲームA');
+  assert.equal(g.image, 'https://example.com/header.jpg');
   assert.equal(g.stream_url, 'https://example.com/stream');
   assert.equal(newGames.length, 0);
+});
+
+test('mergeCatalog: prev に image キーが無ければ引き継がない(U2)', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A' }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok(!('image' in games[0]), 'image キーが無い prev からは image キーを作らない');
+});
+
+test('mergeCatalog: prev の image が null(取得試行済みだが無し)でもキーごと引き継ぐ(U2)', () => {
+  const fetched = [{ appid: 1, name: 'Game A', playtime_forever: 120 }];
+  const prev = { games: [{ appid: 1, name: 'Game A', image: null }] };
+  const { games } = mergeCatalog(fetched, prev);
+  assert.ok('image' in games[0], 'image キー自体は維持する');
+  assert.equal(games[0].image, null);
 });
 
 test('mergeCatalog: 新規ゲームは defaultVisibility を適用し、played/show_playtime は自動判定・既定値になる', () => {
@@ -58,6 +75,7 @@ test('mergeCatalog: 新規ゲームは defaultVisibility を適用し、played/s
   assert.equal(games[0].played, false); // playtime 0 -> 自動判定でfalse
   assert.equal(games[0].show_playtime, true);
   assert.ok(!('name_ja' in games[0]));
+  assert.ok(!('image' in games[0]));
   assert.ok(!('stream_url' in games[0]));
   assert.equal(newGames.length, 1);
   assert.equal(newGames[0].appid, 2);
@@ -81,7 +99,7 @@ test('mergeCatalog: 名前順(ロケール "en")でソートされる', () => {
 
 // ---- buildPublicData ----
 
-test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外・show_playtime falseのみ出力)', () => {
+test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外・show_playtime falseのみ出力・image選択的出力)', () => {
   const catalog = {
     fetched_at: '2026-01-01T00:00:00Z',
     games: [
@@ -94,6 +112,7 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         played: false,
         show_playtime: true,
         stream_url: '',
+        image: null, // 取得試行済みだが無し→出力しない(U3)
       },
       {
         appid: 2,
@@ -104,6 +123,7 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         played: true,
         show_playtime: false,
         stream_url: 'https://example.com/y',
+        image: 'https://example.com/header.jpg', // truthy→出力(U3)
       },
       {
         appid: 3,
@@ -113,12 +133,21 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
         played: false,
         show_playtime: true,
       },
+      {
+        appid: 4,
+        name: 'D',
+        playtime_forever: 0,
+        visible: true,
+        played: false,
+        show_playtime: true,
+        // image キー自体が無いケース(U3)
+      },
     ],
   };
   const settings = { published: true, site_title: 'T' };
   const out = buildPublicData(catalog, settings, '2026-01-02T00:00:00Z');
 
-  assert.equal(out.games.length, 2); // appid 3 は非表示のため除外
+  assert.equal(out.games.length, 3); // appid 3 は非表示のため除外
   assert.ok(!out.games.some((g) => g.appid === 3));
 
   const a = out.games.find((g) => g.appid === 1);
@@ -127,12 +156,17 @@ test('buildPublicData: 選択的出力(name_ja同名除外・stream_url空除外
   assert.ok(!('stream_url' in a), 'stream_url が空の場合は出力しない');
   assert.ok(!('show_playtime' in a), 'show_playtime が既定値(true)の場合は出力しない');
   assert.ok(!('visible' in a), 'visible は公開データに含めない');
+  assert.ok(!('image' in a), 'image が null の場合は出力しない(U3)');
 
   const b = out.games.find((g) => g.appid === 2);
   assert.equal(b.name_ja, 'ビー');
   assert.equal(b.played, true);
   assert.equal(b.stream_url, 'https://example.com/y');
   assert.equal(b.show_playtime, false);
+  assert.equal(b.image, 'https://example.com/header.jpg', 'image が truthy の場合は出力する(U3)');
+
+  const d = out.games.find((g) => g.appid === 4);
+  assert.ok(!('image' in d), 'image キーが無い場合も出力しない(U3)');
 });
 
 test('buildPublicData: settings.show_played が site.show_played に反映される(T6)', () => {
@@ -181,32 +215,37 @@ test('parseJsonc: 行頭コメントは除去し、文字列内の // は保持�
   assert.equal(parsed.n, 1);
 });
 
-// ---- fetchLocalizedName ----
+// ---- fetchAppInfo(REQ-025, U1) ----
 
-test('fetchLocalizedName: 成功時はローカライズ名を返す', async () => {
+test('fetchAppInfo: 成功時は name と header_image から {name, image} を抽出する(U1)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
-    json: async () => ({ '1': { success: true, data: { name: '日本語名' } } }),
+    json: async () => ({
+      '1': {
+        success: true,
+        data: { name: '日本語名', header_image: 'https://example.com/header_japanese.jpg' },
+      },
+    }),
   });
-  const name = await fetchLocalizedName(1, 'japanese', fetchImpl);
-  assert.equal(name, '日本語名');
+  const info = await fetchAppInfo(1, 'japanese', fetchImpl);
+  assert.deepEqual(info, { name: '日本語名', image: 'https://example.com/header_japanese.jpg' });
 });
 
-test('fetchLocalizedName: success:false のときは null を返す', async () => {
+test('fetchAppInfo: success:false のときは {name: null, image: null} を返す(U1)', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
     json: async () => ({ '1': { success: false } }),
   });
-  const name = await fetchLocalizedName(1, 'japanese', fetchImpl);
-  assert.equal(name, null);
+  const info = await fetchAppInfo(1, 'japanese', fetchImpl);
+  assert.deepEqual(info, { name: null, image: null });
 });
 
-test('fetchLocalizedName: 429 は rateLimited フラグ付きの例外を投げる', async () => {
+test('fetchAppInfo: 429 は rateLimited フラグ付きの例外を投げる(既存挙動維持, U1)', async () => {
   const fetchImpl = async () => ({ status: 429, ok: false });
   await assert.rejects(
-    () => fetchLocalizedName(1, 'japanese', fetchImpl),
+    () => fetchAppInfo(1, 'japanese', fetchImpl),
     (err) => err.rateLimited === true
   );
 });

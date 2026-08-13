@@ -241,12 +241,12 @@ h1 {
   right: 10px;
   z-index: 2;
   display: inline-flex;
-  color: var(--text-dim);
+  color: #ff4245; /* YouTube 風の赤 */
   transition: color 0.15s, transform 0.15s;
 }
 
 .video-link:hover {
-  color: var(--accent);
+  color: #ff0000;
   transform: scale(1.15);
 }
 

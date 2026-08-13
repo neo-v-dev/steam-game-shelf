@@ -59,6 +59,8 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
       };
       // name_ja はキーの有無で「取得試行済みか」を判定するため、null もそのまま引き継ぐ
       if (prev && 'name_ja' in prev) merged.name_ja = prev.name_ja;
+      // image(ヘッダー画像URL)も同様にキーの有無で取得試行済みかを判定する(REQ-025)
+      if (prev && 'image' in prev) merged.image = prev.image;
       // 配信リンク(管理ページで設定)も維持する
       if (prev?.stream_url) merged.stream_url = prev.stream_url;
       return merged;
@@ -69,11 +71,13 @@ export function mergeCatalog(fetchedGames, prevCatalog, defaultVisibility = true
 }
 
 /**
- * ストア API からローカライズされたゲーム名を取得する。
- * 見つからない・ローカライズ名が無い場合は null(=取得試行済みとしてキャッシュしてよい)。
+ * ストア API からローカライズされたゲーム名とヘッダー画像URLを取得する(REQ-025)。
+ * 新しめのタイトルは新CDN(shared.akamai.steamstatic.com)のハッシュ付きURLが正式パスとなり、
+ * appid から推測できないため、appdetails の header_image を正として使う。
+ * 見つからない場合は { name: null, image: null }(=取得試行済みとしてキャッシュしてよい)。
  * レート制限(429)時は err.rateLimited = true の例外を投げる。
  */
-export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = fetch) {
+export async function fetchAppInfo(appid, lang = 'japanese', fetchImpl = fetch) {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&l=${lang}&filters=basic`;
   const res = await fetchImpl(url);
   if (res.status === 429 || res.status === 403) {
@@ -84,8 +88,11 @@ export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = f
   if (!res.ok) throw new Error(`appdetails error: HTTP ${res.status}`);
   const data = await res.json();
   const entry = data?.[String(appid)];
-  if (!entry?.success || !entry.data?.name) return null;
-  return entry.data.name;
+  if (!entry?.success) return { name: null, image: null };
+  return {
+    name: entry.data?.name ?? null,
+    image: entry.data?.header_image ?? null,
+  };
 }
 
 /**
@@ -95,12 +102,14 @@ export async function fetchLocalizedName(appid, lang = 'japanese', fetchImpl = f
 export function buildPublicData(catalog, settings, generatedAt) {
   const visibleGames = (catalog?.games ?? [])
     .filter((g) => g.visible)
-    .map(({ visible, name_ja, played, stream_url, show_playtime, ...g }) => {
+    .map(({ visible, name_ja, played, stream_url, show_playtime, image, ...g }) => {
       // デフォルトと異なる値のみ公開データに含める(サイズ削減)
       if (name_ja && name_ja !== g.name) g.name_ja = name_ja;
       if (played) g.played = true;
       if (stream_url) g.stream_url = stream_url;
       if (show_playtime === false) g.show_playtime = false;
+      // image は取得できた場合(truthy)のみ出力する(null=取得試行済みだが無し、は出力しない, REQ-025)
+      if (image) g.image = image;
       return g;
     });
   return {

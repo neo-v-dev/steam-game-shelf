@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   fetchOwnedGames,
-  fetchLocalizedName,
+  fetchAppInfo,
   mergeCatalog,
   parseJsonc,
 } from './lib.mjs';
@@ -36,23 +36,25 @@ const { games, newGames } = mergeCatalog(
   settings.default_visibility !== false
 );
 
-// 日本語ゲーム名の差分取得。
+// 日本語ゲーム名 + ヘッダー画像URLの差分取得(REQ-025で image を追加)。
 // ストア API はレート制限が厳しい(概ね 200 req/5min)ため、1回の実行で最大 150 件に抑え、
 // 未取得分は次回以降の実行で少しずつ埋める。取得結果(null 含む)はカタログにキャッシュされ、
-// name_ja キーが既に存在するゲームは再取得しない。
+// name_ja / image のキーが両方とも既に存在するゲームは再取得しない。
 if (settings.fetch_japanese_names !== false) {
   const MAX_PER_RUN = 150;
   const WAIT_MS = 1500;
-  const pending = games.filter((g) => !('name_ja' in g));
+  const pending = games.filter((g) => !('name_ja' in g) || !('image' in g));
   const targets = pending.slice(0, MAX_PER_RUN);
   if (targets.length > 0) {
     console.log(
-      `日本語名を取得中: ${targets.length} 件 (未取得 ${pending.length} 件)`
+      `日本語名・画像を取得中: ${targets.length} 件 (未取得 ${pending.length} 件)`
     );
     let fetched = 0;
     for (const g of targets) {
       try {
-        g.name_ja = await fetchLocalizedName(g.appid, 'japanese');
+        const info = await fetchAppInfo(g.appid, 'japanese');
+        g.name_ja = info.name;
+        g.image = info.image;
         fetched++;
       } catch (err) {
         if (err.rateLimited) {
@@ -60,11 +62,11 @@ if (settings.fetch_japanese_names !== false) {
           break;
         }
         // 一時的なエラーはキャッシュせず、次回の実行で再試行する
-        console.warn(`  appid ${g.appid} の日本語名取得に失敗: ${err.message}`);
+        console.warn(`  appid ${g.appid} の日本語名・画像取得に失敗: ${err.message}`);
       }
       await new Promise((r) => setTimeout(r, WAIT_MS));
     }
-    console.log(`日本語名: ${fetched} 件取得 (残り ${pending.length - targets.length} 件は次回以降)`);
+    console.log(`日本語名・画像: ${fetched} 件取得 (残り ${pending.length - targets.length} 件は次回以降)`);
   }
 }
 

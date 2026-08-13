@@ -54,6 +54,10 @@ Note on Japanese titles: the Steam store API is heavily rate-limited, so localiz
 
 Sorting uses Japanese collation (`localeCompare('ja')`) on the localized title when available, otherwise the original title. **Games whose localized title hasn't been fetched yet sort by their (usually English) original title until it arrives.** Also, **kanji titles do not sort in reading order** (there's no furigana/reading data to sort by) — this is a technical limitation with no planned fix.
 
+### About game images
+
+Some newer titles don't have artwork at the guessable CDN path, so the store API's official header image URL is fetched alongside the localized name and cached in `data/catalog.json` (falling back to the guessed URL chain when it can't be fetched).
+
 ## Games that can't be fetched
 
 Due to how the Steam Web API (`GetOwnedGames`) works, the following are not returned:

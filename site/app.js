@@ -72,6 +72,20 @@ function headerImageUrls(appid) {
   return files.map((f) => `${base}/${f}`);
 }
 
+// 画像候補チェーン(REQ-025)。新CDN(ハッシュ付きURL)の g.image をキャッシュ済みなら先頭に挿入する。
+// ja: [g.image, ...従来チェーン] / en: [g.image の 'header_japanese'→'header' 置換(変化時のみ), g.image, ...従来チェーン]
+// g.image が無いゲームは従来どおり。
+function imageCandidateUrls(g) {
+  const fallback = headerImageUrls(g.appid);
+  if (!g.image) return fallback;
+  if (state.lang !== 'ja') {
+    const replaced = g.image.replace('header_japanese', 'header');
+    const enCandidates = replaced !== g.image ? [replaced, g.image] : [g.image];
+    return [...enCandidates, ...fallback];
+  }
+  return [g.image, ...fallback];
+}
+
 // 日本語表示時は邦題(あれば)、英語表示時は原題を返す
 function displayName(g) {
   return state.lang === 'ja' && g.name_ja ? g.name_ja : g.name;
@@ -200,7 +214,7 @@ function render() {
     img.className = 'card-image';
     img.loading = 'lazy';
     img.alt = g.name;
-    const imgCandidates = headerImageUrls(g.appid);
+    const imgCandidates = imageCandidateUrls(g);
     let imgIndex = 0;
     img.src = imgCandidates[imgIndex];
     img.onerror = () => {

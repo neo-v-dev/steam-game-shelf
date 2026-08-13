@@ -367,7 +367,7 @@ function loadDemo() {
   state.games = [
     { appid: 570, name: 'Dota 2', playtime_forever: 12345, rtime_last_played: 1753574400, visible: true, played: true, show_playtime: true },
     { appid: 730, name: 'Counter-Strike 2', playtime_forever: 3456, rtime_last_played: 1753488000, visible: true, played: true, show_playtime: false },
-    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo' },
+    { appid: 1245620, name: 'ELDEN RING', playtime_forever: 9021, rtime_last_played: 1752969600, visible: true, played: true, show_playtime: true, stream_url: 'https://www.youtube.com/watch?v=demo', image: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1784684281' },
     { appid: 1086940, name: "Baldur's Gate 3", name_ja: 'バルダーズ・ゲート3', playtime_forever: 6000, rtime_last_played: 1751328000, visible: true, played: false, show_playtime: true },
     { appid: 413150, name: 'Stardew Valley', name_ja: 'スターデューバレー', playtime_forever: 200, rtime_last_played: 1748736000, visible: false, played: false, show_playtime: true },
     { appid: 1145360, name: 'Hades', name_ja: 'ハデス', playtime_forever: 4100, rtime_last_played: 1752278400, visible: true, played: true, show_playtime: true },
@@ -406,6 +406,20 @@ function headerImageUrls(appid) {
       ? ['header_japanese.jpg', 'header.jpg', 'capsule_616x353.jpg']
       : ['header.jpg', 'capsule_616x353.jpg'];
   return files.map((f) => `${base}/${f}`);
+}
+
+// 画像候補チェーン(REQ-025)。新CDN(ハッシュ付きURL)の g.image をキャッシュ済みなら先頭に挿入する。
+// ja: [g.image, ...従来チェーン] / en: [g.image の 'header_japanese'→'header' 置換(変化時のみ), g.image, ...従来チェーン]
+// g.image が無いゲームは従来どおり。
+function imageCandidateUrls(g) {
+  const fallback = headerImageUrls(g.appid);
+  if (!g.image) return fallback;
+  if (state.lang !== 'ja') {
+    const replaced = g.image.replace('header_japanese', 'header');
+    const enCandidates = replaced !== g.image ? [replaced, g.image] : [g.image];
+    return [...enCandidates, ...fallback];
+  }
+  return [g.image, ...fallback];
 }
 
 function formatLastPlayed(epochSeconds) {
@@ -556,7 +570,7 @@ function renderCards() {
     img.className = 'card-image';
     img.loading = 'lazy';
     img.alt = g.name;
-    const imgCandidates = headerImageUrls(g.appid);
+    const imgCandidates = imageCandidateUrls(g);
     let imgIndex = 0;
     img.src = imgCandidates[imgIndex];
     img.onerror = () => {
