@@ -34,6 +34,7 @@ const I18N = {
     settings_title: 'サイト設定',
     label_site_title: 'サイト名',
     label_default_lang: '初期表示言語',
+    label_theme: 'デザイン',
     group_display_items: 'カードの表示項目',
     help_display_items:
       'それぞれOFFにすると、カードだけでなく上部の統計や絞り込みにも反映されます(プレイ時間: 統計の合計時間表示。プレイ済み: 「プレイ済み/未プレイ」絞り込み)。ゲームごとの値は保持され、ONに戻すと元どおり反映されます。',
@@ -107,6 +108,7 @@ const I18N = {
     settings_title: 'Site settings',
     label_site_title: 'Site title',
     label_default_lang: 'Default language',
+    label_theme: 'Design',
     group_display_items: 'Card display items',
     help_display_items:
       'Turning either of these off affects more than the cards — it also changes the stats bar and the played/not-played filter at the top (playtime: the total-hours stat; played: the played/not-played filter). Per-game values are preserved and take effect again when turned back on.',
@@ -183,6 +185,9 @@ const state = {
   // ソート変更時、新しい値が developer/publisher 以外ならここも追従して更新する。
   sortSecondary: 'name',
   loaded: false,
+  // デザイン(テーマ)選択肢(REQ-038)。themes/themes.json から取得する。
+  // 取得できるまで/失敗時のフォールバックとして dark のみを初期値にしておく。
+  themes: [{ id: 'default', label: 'Default (dark)' }],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -239,10 +244,44 @@ function detectRepo() {
   return '';
 }
 
+// ---- デザイン(テーマ)選択(REQ-038) ----
+
+// #set-theme のセレクトを state.themes から再構築し、selectedId を選択状態にする。
+// selectedId が state.themes に無ければ末尾に追加してからセットする(未知のIDでもセレクトを壊さない)。
+function renderThemeOptions(selectedId) {
+  const select = $('set-theme');
+  const current = selectedId ?? select.value ?? 'default';
+  select.innerHTML = state.themes
+    .map(({ id, label }) => `<option value="${id}">${label}</option>`)
+    .join('');
+  if (!state.themes.some((th) => th.id === current)) {
+    select.insertAdjacentHTML('beforeend', `<option value="${current}">${current}</option>`);
+  }
+  select.value = current;
+}
+
+// themes/themes.json を fetch してセレクトの選択肢を構築する。
+// 取得失敗時は現在値のみを選択肢にする(セレクト自体は壊さない)。
+async function loadThemeOptions() {
+  try {
+    const res = await fetch('themes/themes.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = await res.json();
+    if (Array.isArray(list) && list.length > 0) state.themes = list;
+  } catch (err) {
+    console.error(err);
+    const current = state.settings.theme ?? 'default';
+    state.themes = [{ id: current, label: current }];
+  }
+  renderThemeOptions(state.settings.theme ?? $('set-theme').value);
+}
+
 function applySettingsToInputs() {
   const s = state.settings;
   $('set-site-title').value = s.site_title ?? '';
   $('set-default-lang').value = s.default_lang === 'en' ? 'en' : 'ja';
+  renderThemeOptions(s.theme ?? 'default');
+  $('theme-css').setAttribute('href', `themes/${$('set-theme').value}.css`);
   $('set-show-playtime').checked = s.show_playtime !== false;
   $('set-show-played').checked = s.show_played !== false;
   $('set-show-last-played').checked = s.show_last_played !== false;
@@ -326,6 +365,8 @@ function collectSettingsChanges() {
   if (title && title !== (s.site_title ?? '')) changes.site_title = title;
   const lang = $('set-default-lang').value;
   if (lang !== (s.default_lang === 'en' ? 'en' : 'ja')) changes.default_lang = lang;
+  const theme = $('set-theme').value || 'default';
+  if (theme !== (s.theme ?? 'default')) changes.theme = theme;
   const showPlaytime = $('set-show-playtime').checked;
   if (showPlaytime !== (s.show_playtime !== false)) changes.show_playtime = showPlaytime;
   const showPlayed = $('set-show-played').checked;
@@ -438,6 +479,7 @@ function loadDemo() {
   state.settings = {
     site_title: 'Demo Game Shelf',
     default_lang: 'ja',
+    theme: 'default',
     show_playtime: true,
     show_played: true,
     show_last_played: true,
@@ -683,17 +725,27 @@ function renderList() {
   }
 }
 
+// カードプレビュー(#game-cards)。公開ページ(app.js の buildCard)と同じ
+// .game-card / .card-thumb(-img/-placeholder) / .card-title-row / .card-title /
+// .card-meta > .meta-row の構造を使い、admin 固有の要素(非表示ラベル/
+// プレイ済み・時間表示チップ/配信URL入力)を admin- クラスで重ねる(REQ-039 WP2)。
 function renderCards() {
   const grid = $('game-cards');
   grid.innerHTML = '';
   for (const g of filteredGames()) {
     const card = document.createElement('div');
-    card.className = 'card' + (g.visible ? '' : ' off');
+    card.className = 'game-card' + (g.visible ? '' : ' off');
+
+    const thumb = document.createElement('span');
+    thumb.className = 'card-thumb';
 
     const img = document.createElement('img');
-    img.className = 'card-image';
+    img.className = 'card-thumb-img';
     img.loading = 'lazy';
-    img.alt = g.name;
+    img.decoding = 'async';
+    img.width = 460;
+    img.height = 215;
+    img.alt = '';
     const imgCandidates = imageCandidateUrls(g);
     let imgIndex = 0;
     img.src = imgCandidates[imgIndex];
@@ -703,29 +755,39 @@ function renderCards() {
         img.src = imgCandidates[imgIndex];
       } else {
         img.remove();
-        card.classList.add('no-image');
+        const placeholder = document.createElement('span');
+        placeholder.className = 'card-thumb-placeholder';
+        placeholder.setAttribute('aria-hidden', 'true');
+        placeholder.textContent = '🎮';
+        thumb.insertBefore(placeholder, thumb.firstChild);
       }
     };
-    card.appendChild(img);
+    thumb.appendChild(img);
 
     const hiddenLabel = document.createElement('span');
     hiddenLabel.className = 'card-hidden-label';
     hiddenLabel.textContent = t().hidden_label;
     hiddenLabel.hidden = g.visible;
-    card.appendChild(hiddenLabel);
+    thumb.appendChild(hiddenLabel);
 
-    const body = document.createElement('div');
+    card.appendChild(thumb);
+
+    const body = document.createElement('span');
     body.className = 'card-body';
 
-    const name = document.createElement('div');
-    name.className = 'card-name';
+    const titleRow = document.createElement('span');
+    titleRow.className = 'card-title-row';
+    const name = document.createElement('span');
+    name.className = 'card-title';
     name.textContent = displayName(g);
-    body.appendChild(name);
+    titleRow.appendChild(name);
+    body.appendChild(titleRow);
 
     // プレイ時間+最終プレイ日(REQ-024。未プレイは「未プレイ」、rtime_last_played=0 は省略)
-    const meta = document.createElement('div');
+    const meta = document.createElement('span');
     meta.className = 'card-meta';
     const playtimeSpan = document.createElement('span');
+    playtimeSpan.className = 'meta-row';
     playtimeSpan.textContent =
       g.playtime_forever > 0
         ? t().playtime(Math.round((g.playtime_forever / 60) * 10) / 10)
@@ -733,16 +795,19 @@ function renderCards() {
     meta.appendChild(playtimeSpan);
     if (g.rtime_last_played > 0) {
       const lastPlayedSpan = document.createElement('span');
+      lastPlayedSpan.className = 'meta-row';
       lastPlayedSpan.textContent = t().last_played(formatLastPlayed(g.rtime_last_played));
       meta.appendChild(lastPlayedSpan);
     }
     if (g.release_date) {
       const releaseDateSpan = document.createElement('span');
+      releaseDateSpan.className = 'meta-row';
       releaseDateSpan.textContent = t().release_date(formatReleaseDate(g));
       meta.appendChild(releaseDateSpan);
     }
     if (g.developer) {
       const developerSpan = document.createElement('span');
+      developerSpan.className = 'meta-row';
       developerSpan.textContent = t().developer(g.developer);
       meta.appendChild(developerSpan);
     }
@@ -818,6 +883,7 @@ function render() {
   $('settings-title').textContent = tr.settings_title;
   $('label-site-title').textContent = tr.label_site_title;
   $('label-default-lang').textContent = tr.label_default_lang;
+  $('label-theme').textContent = tr.label_theme;
   $('group-display-items').textContent = tr.group_display_items;
   $('help-display-items').textContent = tr.help_display_items;
   $('label-show-playtime').textContent = tr.label_show_playtime;
@@ -878,6 +944,11 @@ function init() {
   });
   $('load-button').addEventListener('click', load);
   $('save-button').addEventListener('click', save);
+  // デザイン切替は保存前でも即時プレビューする(REQ-038)。#theme-css の href を差し替えるだけで
+  // ページの配色が変わる(base.css はそのまま、テーマCSSのみ切り替わる)。
+  $('set-theme').addEventListener('change', (e) => {
+    $('theme-css').setAttribute('href', `themes/${e.target.value}.css`);
+  });
   $('view-list').addEventListener('click', () => setView('list'));
   $('view-cards').addEventListener('click', () => setView('cards'));
   $('admin-search').addEventListener('input', (e) => {
@@ -900,6 +971,8 @@ function init() {
   });
 
   render();
+  renderThemeOptions('default');
+  loadThemeOptions();
   if (DEMO) loadDemo();
 }
 

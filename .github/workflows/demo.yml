@@ -36,6 +36,7 @@ jobs:
         run: |
           mkdir -p site/data
           cp demo/games.json site/data/games.json
+          cp site/themes/default.css site/data/theme.css
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

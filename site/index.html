@@ -4,44 +4,47 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Game Shelf</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="base.css">
+  <link id="theme-css" rel="stylesheet" href="data/theme.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
 </head>
-<body>
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="title-block">
-        <h1 id="site-title">My Game Shelf</h1>
-        <p id="site-description" class="description"></p>
+<body class="sgs-root">
+  <main class="sgs-page">
+    <header class="site-header">
+      <h1 id="site-title" class="site-title">My Game Shelf</h1>
+      <p id="site-description" class="site-desc"></p>
+      <div class="header-meta">
+        <ul id="stats" class="stat-chips"></ul>
+        <div class="header-actions">
+          <a id="channel-link" class="channel-link" target="_blank" rel="noopener" hidden></a>
+          <button id="lang-toggle" class="lang-toggle" type="button">English</button>
+        </div>
       </div>
-      <div class="header-actions">
-        <a id="channel-link" class="channel-link" target="_blank" rel="noopener" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2.2 14.5v-9l7 4.5-7 4.5z"/></svg>
-          <span id="channel-link-label"></span>
-        </a>
-        <button id="lang-toggle" class="lang-toggle" type="button">English</button>
-      </div>
-    </div>
-    <div id="stats" class="stats"></div>
-  </header>
+    </header>
 
-  <main>
-    <div id="notice" class="notice" hidden></div>
+    <div id="notice" class="notice-panel" hidden>
+      <h2 id="notice-title" class="notice-title"></h2>
+      <p id="notice-text" class="notice-text"></p>
+    </div>
 
     <div id="controls" class="controls" hidden>
-      <input id="search" class="search" type="search" autocomplete="off">
-      <select id="filter" class="sort"></select>
-      <select id="sort" class="sort"></select>
+      <input id="search" class="search-input" type="search" autocomplete="off">
+      <select id="filter" class="filter-select"></select>
+      <select id="sort" class="sort-select"></select>
     </div>
 
-    <div id="grid" class="grid"></div>
-    <p id="empty-message" class="empty" hidden></p>
+    <ul id="grid" class="game-grid"></ul>
+
+    <div id="empty-message" class="empty-state" hidden>
+      <span id="empty-icon" class="empty-state-icon" aria-hidden="true"></span>
+      <p id="empty-text" class="empty-state-text"></p>
+    </div>
   </main>
 
   <footer class="site-footer">
-    <span id="updated-at"></span>
-    <span class="sep">·</span>
-    <a href="https://github.com/neo-v-dev/steam-game-shelf" target="_blank" rel="noopener">Powered by Steam Game Shelf</a>
+    <span id="updated-at" class="footer-updated"></span>
+    <span class="footer-sep">·</span>
+    <a class="footer-credit" href="https://github.com/neo-v-dev/steam-game-shelf" target="_blank" rel="noopener">Powered by Steam Game Shelf</a>
   </footer>
 
   <script src="app.js"></script>

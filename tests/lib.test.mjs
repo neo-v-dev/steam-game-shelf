@@ -11,6 +11,7 @@ import {
   fetchOwnedGames,
   normalizeStreamUrl,
   parseReleaseDate,
+  resolveThemeFile,
 } from '../scripts/lib.mjs';
 
 // ---- fetchOwnedGames ----
@@ -421,6 +422,22 @@ test('parseReleaseDate: null/undefined/空文字/不正月名は null', () => {
   assert.equal(parseReleaseDate(undefined), null);
   assert.equal(parseReleaseDate(''), null);
   assert.equal(parseReleaseDate('Xyz 2, 2016'), null);
+});
+
+// ---- resolveThemeFile(REQ-038) ----
+
+test('resolveThemeFile: availableIds に含まれるIDはそのまま返す', () => {
+  assert.equal(resolveThemeFile('dark', ['dark', 'light']), 'dark');
+  assert.equal(resolveThemeFile('light', ['dark', 'light']), 'light');
+});
+
+test('resolveThemeFile: availableIds に含まれない/未設定/不正な型は "default" にフォールバックする(REQ-039)', () => {
+  assert.equal(resolveThemeFile('nonexistent', ['default']), 'default');
+  assert.equal(resolveThemeFile(undefined, ['default', 'light']), 'default');
+  assert.equal(resolveThemeFile(null, ['default', 'light']), 'default');
+  assert.equal(resolveThemeFile(123, ['default']), 'default');
+  assert.equal(resolveThemeFile('default', []), 'default');
+  assert.equal(resolveThemeFile('default', undefined), 'default');
 });
 
 // ---- parseJsonc ----

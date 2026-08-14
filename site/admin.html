@@ -4,13 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <!-- REQ-033: 管理ページの実動作(GitHub API通信・Steam画像表示・favicon data:)を壊さない最小構成 -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com; img-src https: data:; style-src 'self'">
+  <!-- REQ-033: 管理ページの実動作(GitHub API通信・Steam画像表示・favicon data:)を壊さない最小構成。
+       REQ-038: connect-src に 'self' を追加(themes/themes.json の同一オリジンfetchを許可するため)。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com 'self'; img-src https: data:; style-src 'self'">
   <title>Game Shelf Admin</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="admin.css">
+  <link id="theme-css" rel="stylesheet" href="data/theme.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
 </head>
-<body>
+<body class="sgs-root">
   <header class="site-header">
     <div class="header-inner">
       <div class="title-block">
@@ -50,10 +53,14 @@
         </label>
         <label>
           <span id="label-default-lang"></span>
-          <select id="set-default-lang" class="sort">
+          <select id="set-default-lang" class="sort-select">
             <option value="ja">日本語 (ja)</option>
             <option value="en">English (en)</option>
           </select>
+        </label>
+        <label>
+          <span id="label-theme"></span>
+          <select id="set-theme" class="sort-select"></select>
         </label>
         <h3 id="group-display-items" class="admin-subheading"></h3>
         <p id="help-display-items" class="admin-help small"></p>
@@ -89,12 +96,12 @@
         </div>
       </div>
       <div class="admin-toolbar">
-        <input id="admin-search" class="search" type="search" autocomplete="off">
-        <select id="admin-sort" class="sort"></select>
+        <input id="admin-search" class="search-input" type="search" autocomplete="off">
+        <select id="admin-sort" class="sort-select"></select>
       </div>
       <p id="counts" class="admin-help"></p>
       <div id="game-list" class="admin-list"></div>
-      <div id="game-cards" class="grid admin-grid" hidden></div>
+      <div id="game-cards" class="game-grid admin-grid" hidden></div>
 
       <div class="admin-savebar">
         <label class="admin-published">

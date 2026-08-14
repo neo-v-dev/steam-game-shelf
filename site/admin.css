@@ -1,0 +1,431 @@
+/* ============================================================
+   Steam Game Shelf — admin.css
+   管理ページ(admin.html)専用のスタイル。base.css(納品構造)を
+   前提に、admin 固有の要素(接続フォーム/一覧行/チップ/カード内
+   オーバーレイ等)だけをここに定義する。
+
+   由来: git show HEAD:site/style.css の「管理ページ (admin.html)」節
+   (REQ-039 以前のスタイル)を、新トークン(--sgs-*)へ色のみ
+   マッピングして移植したもの(確定事項8)。
+     --bg        → --sgs-bg
+     --bg-card   → --sgs-surface
+     --bg-card-hover → --sgs-surface-2
+     --text      → --sgs-text
+     --text-dim  → --sgs-text-muted
+     --accent    → --sgs-accent
+     --border    → --sgs-border
+     --radius    → --sgs-radius
+   エラー系(#ff7a7a 等)は直値のまま維持する。
+
+   カードプレビュー(#game-cards)は base.css の .game-card 構造
+   (公開ページと共通)をそのまま使う。ここでは admin- プレフィックスの
+   オーバーレイ要素(非表示ラベル/チップ/配信URL入力)のみを追加する。
+   ============================================================ */
+
+/* ---- ページ全体の横幅(旧 style.css の main/.header-inner と同じ 1100px 制約) ---- */
+main,
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: 0.02em;
+}
+
+.description {
+  margin: 4px 0 0;
+  color: var(--sgs-text-muted);
+  font-size: 0.95rem;
+}
+
+/* ---- 接続 / サイト設定フォーム ---- */
+
+.admin-card {
+  background: var(--sgs-surface);
+  border: 1px solid var(--sgs-border);
+  border-radius: var(--sgs-radius);
+  padding: 20px;
+  margin: 24px 0;
+}
+
+.admin-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.admin-help {
+  color: var(--sgs-text-muted);
+  font-size: 0.88rem;
+  margin: 4px 0 12px;
+}
+
+.admin-help.small {
+  font-size: 0.78rem;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: var(--sgs-text-muted);
+}
+
+.admin-subheading {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sgs-text-muted);
+}
+
+.admin-form input {
+  padding: 9px 12px;
+  border-radius: var(--sgs-radius);
+  border: 1px solid var(--sgs-border);
+  background: var(--sgs-bg);
+  color: var(--sgs-text);
+  font-size: 0.92rem;
+  outline: none;
+}
+
+.admin-form input:focus {
+  border-color: var(--sgs-accent);
+}
+
+.admin-button {
+  padding: 9px 18px;
+  border-radius: var(--sgs-radius);
+  border: 1px solid var(--sgs-border);
+  background: var(--sgs-surface-2);
+  color: var(--sgs-text);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.admin-button:hover {
+  border-color: var(--sgs-accent);
+}
+
+/* accent-contrast はテーマごとにアクセント背景上で読める文字色として
+   定義済みのトークン(base.css/各 themes/*.css)。旧コードの固定値
+   #0d1420 は default テーマの accent 専用色で、他テーマ(horror等)の
+   アクセント色の上では読みにくくなるためトークンを使う(暫定判断)。 */
+.admin-button.primary {
+  background: var(--sgs-accent);
+  border-color: var(--sgs-accent);
+  color: var(--sgs-accent-contrast);
+  font-weight: 600;
+}
+
+.admin-button.primary:hover {
+  filter: brightness(1.1);
+}
+
+.admin-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-check,
+.admin-form label.admin-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.admin-check input {
+  accent-color: var(--sgs-accent);
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- 編集ツールバー / 表示切替 ---- */
+
+.admin-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-button.small {
+  padding: 4px 12px;
+  font-size: 0.78rem;
+}
+
+/* .admin-button.active の背景は旧コードでは固定 rgba(アクセント色決め打ち)
+   だったが、テーマごとにアクセント色が大きく異なる(neon の水色〜horror の赤等)ため、
+   半透明合成に頼らず surface-2 + アクセント文字/枠にして全テーマで確実に判読できる
+   ようにした(暫定判断。tag-chip.on も同じ理由で同様に扱う)。 */
+.admin-button.active {
+  background: var(--sgs-surface-2);
+  color: var(--sgs-accent);
+  border-color: var(--sgs-accent);
+}
+
+.admin-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.admin-list {
+  max-height: 55vh;
+  overflow-y: auto;
+  border: 1px solid var(--sgs-border);
+  border-radius: var(--sgs-radius);
+  margin-top: 8px;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--sgs-border);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.admin-row:last-child {
+  border-bottom: none;
+}
+
+.admin-row:hover {
+  background: var(--sgs-surface-2);
+}
+
+.admin-row input {
+  accent-color: var(--sgs-accent);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.admin-row-name {
+  flex: 1;
+}
+
+.admin-row.hidden-game .admin-row-name {
+  color: var(--sgs-text-muted);
+  text-decoration: line-through;
+}
+
+.admin-row-meta {
+  color: var(--sgs-text-muted);
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+/* ---- タグチップ(プレイ済み / 時間表示) ---- */
+
+.tag-chip {
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--sgs-text-muted);
+  border: 1px solid var(--sgs-border);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tag-chip:hover {
+  border-color: var(--sgs-accent);
+}
+
+.tag-chip.on {
+  background: var(--sgs-surface-2);
+  color: var(--sgs-accent);
+  border-color: var(--sgs-accent);
+}
+
+.tag-chip.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ロック中は hover しても枠線を変化させない(通常状態の色のまま) */
+.tag-chip.locked:hover {
+  border-color: var(--sgs-border);
+}
+
+.tag-chip.locked.on:hover {
+  border-color: var(--sgs-accent);
+}
+
+/* ---- 配信URL入力 ---- */
+
+.stream-input {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--sgs-border);
+  background: var(--sgs-bg);
+  color: var(--sgs-text);
+  font-size: 0.76rem;
+  outline: none;
+}
+
+.stream-input:focus {
+  border-color: var(--sgs-accent);
+}
+
+.stream-input.filled {
+  border-color: var(--sgs-accent);
+}
+
+/* リスト表示のURL入力欄は行内で伸縮させる(最小幅は確保しつつ広げすぎない) */
+.admin-list .stream-input {
+  flex: 1 1 260px;
+  min-width: 260px;
+  max-width: 460px;
+}
+
+/* ---- カード表示(#game-cards)----
+   カード自体は base.css の .game-card / .card-thumb(-img/-placeholder) /
+   .card-title-row / .card-title / .card-meta / .meta-row をそのまま使う
+   (公開ページと共通構造・REQ-039 WP2)。ここでは admin 固有の
+   オーバーレイ(非表示ラベル/チップ/配信URL入力)と、非表示状態の
+   見た目だけを追加する。 */
+
+.admin-grid {
+  padding-bottom: 0;
+  margin-top: 12px;
+}
+
+.admin-grid .game-card {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-grid .game-card.off .card-thumb-img,
+.admin-grid .game-card.off .card-thumb-placeholder {
+  filter: grayscale(1) brightness(0.5);
+}
+
+.admin-grid .game-card.off {
+  border-style: dashed;
+}
+
+.admin-grid .game-card.off .card-title {
+  color: var(--sgs-text-muted);
+}
+
+/* 非表示ラベル。旧コードから直値の背景/枠色を維持(サムネイル画像の上に載る
+   オーバーレイのため、テーマの surface 色ではなく画像上で確実に視認できる
+   固定の半透明黒+警告色を使う。エラー系の直値維持という確定事項8の方針に倣う) */
+.card-hidden-label {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  background: rgba(13, 20, 32, 0.85);
+  color: #ff9b9b;
+  border: 1px solid #7a4040;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.admin-card-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.admin-card-stream {
+  margin-top: 8px;
+}
+
+.admin-card-stream .stream-input {
+  width: 100%;
+}
+
+/* ---- 保存バー ---- */
+
+.admin-savebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.admin-published {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.admin-published input {
+  accent-color: var(--sgs-accent);
+  width: 16px;
+  height: 16px;
+}
+
+.admin-status {
+  margin-top: 10px;
+  font-size: 0.88rem;
+  color: var(--sgs-accent);
+  min-height: 1.2em;
+}
+
+.admin-status.error {
+  color: #ff7a7a;
+}
+
+/* ---- フッター ---- */
+
+.site-footer {
+  justify-content: center;
+  padding: 18px 20px 28px;
+}
+
+.site-footer a {
+  color: var(--sgs-text-muted);
+}
+
+.site-footer a:hover {
+  color: var(--sgs-accent);
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.3rem;
+  }
+}

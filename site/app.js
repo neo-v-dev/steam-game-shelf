@@ -1,8 +1,12 @@
 // games.json を読み込んで一覧を描画する。ビルド工程なしの素の JS。
+// DOM/class は design-deliverable/css(納品コンポーネントシート)の構造に合わせている(REQ-039)。
 
 const I18N = {
   ja: {
     search_placeholder: 'ゲーム名で検索…',
+    aria_search: 'ゲーム名で検索',
+    aria_filter: '絞り込み',
+    aria_sort: '並び替え',
     sort_name: '名前順',
     sort_playtime: 'プレイ時間順',
     sort_last_played: '最近プレイした順',
@@ -14,24 +18,32 @@ const I18N = {
     filter_unplayed: '未プレイ',
     badge_played: 'プレイ済み',
     watch_stream: '配信を見る',
+    stream_link_label: (name) => `${name} の配信を見る`,
+    store_link_label: (name) => `${name} を Steam ストアで開く`,
     channel: '配信チャンネル',
-    stats_games: (n) => `${n} 本`,
-    stats_hours: (h) => `総プレイ ${h.toLocaleString('ja-JP')} 時間`,
+    stats_games_unit: '本',
+    stats_hours_prefix: '総プレイ ',
+    stats_hours_unit: '時間',
     playtime: (h) => `${h.toLocaleString('ja-JP')} 時間`,
     playtime_none: '未プレイ',
     last_played: (d) => `最終プレイ: ${d}`,
     developer: (d) => `開発元: ${d}`,
     release_date: (d) => `発売日: ${d}`,
     updated: (d) => `最終更新: ${d}`,
-    unpublished:
+    notice_unpublished_title: '準備中',
+    notice_unpublished_text:
       'このサイトはまだ準備中です。(管理者向け: config/settings.jsonc の "published" を true にすると公開されます)',
+    notice_load_error_title: '読み込みエラー',
+    notice_load_error_text: 'データの読み込みに失敗しました。',
     no_games: '表示できるゲームがありません。',
     no_match: '該当するゲームがありません。',
     lang_button: 'English',
-    load_error: 'データの読み込みに失敗しました。',
   },
   en: {
     search_placeholder: 'Search by title…',
+    aria_search: 'Search by title',
+    aria_filter: 'Filter',
+    aria_sort: 'Sort',
     sort_name: 'Name',
     sort_playtime: 'Playtime',
     sort_last_played: 'Recently played',
@@ -43,27 +55,33 @@ const I18N = {
     filter_unplayed: 'Not played',
     badge_played: 'Played',
     watch_stream: 'Watch stream',
+    stream_link_label: (name) => `Watch stream for ${name}`,
+    store_link_label: (name) => `Open ${name} on the Steam store`,
     channel: 'Channel',
-    stats_games: (n) => `${n} games`,
-    stats_hours: (h) => `${h.toLocaleString('en-US')} hours total`,
+    stats_games_unit: ' games',
+    stats_hours_prefix: 'Total ',
+    stats_hours_unit: 'h',
     playtime: (h) => `${h.toLocaleString('en-US')} hrs`,
     playtime_none: 'Not played',
     last_played: (d) => `Last played: ${d}`,
     developer: (d) => `Developer: ${d}`,
     release_date: (d) => `Released: ${d}`,
     updated: (d) => `Last updated: ${d}`,
-    unpublished:
+    notice_unpublished_title: 'Coming soon',
+    notice_unpublished_text:
       'This site is not published yet. (For the owner: set "published" to true in config/settings.jsonc)',
+    notice_load_error_title: 'Load error',
+    notice_load_error_text: 'Failed to load data.',
     no_games: 'No games to display.',
     no_match: 'No games match your search.',
     lang_button: '日本語',
-    load_error: 'Failed to load data.',
   },
 };
 
 const state = {
   lang: 'ja',
   data: null,
+  loadError: false,
   query: '',
   sort: 'name',
   // developer/publisher ソート時の同値タイブレークに使う二次ソート(REQ-037)。
@@ -182,6 +200,124 @@ function sortedFilteredGames() {
   return games;
 }
 
+// #notice を title+text 分割の構造で表示する(REQ-039 確定事項6)。
+// unpublished/load_error のいずれも同じ構造を使う。
+function showNotice(title, text) {
+  $('notice-title').textContent = title;
+  $('notice-text').textContent = text;
+  $('notice').hidden = false;
+}
+
+function buildCard(g, tr) {
+  const card = document.createElement('li');
+  card.className = 'game-card';
+
+  const link = document.createElement('a');
+  link.className = 'card-link';
+  link.href = `https://store.steampowered.com/app/${g.appid}/`;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = tr.store_link_label(displayName(g));
+  card.appendChild(link);
+
+  const thumb = document.createElement('span');
+  thumb.className = 'card-thumb';
+
+  const img = document.createElement('img');
+  img.className = 'card-thumb-img';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.width = 460;
+  img.height = 215;
+  img.alt = '';
+  const imgCandidates = imageCandidateUrls(g);
+  let imgIndex = 0;
+  img.src = imgCandidates[imgIndex];
+  img.onerror = () => {
+    imgIndex += 1;
+    if (imgIndex < imgCandidates.length) {
+      img.src = imgCandidates[imgIndex];
+    } else {
+      img.remove();
+      const placeholder = document.createElement('span');
+      placeholder.className = 'card-thumb-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      placeholder.textContent = '🎮';
+      thumb.insertBefore(placeholder, thumb.firstChild);
+    }
+  };
+  thumb.appendChild(img);
+
+  if (g.showPlayed) {
+    const badge = document.createElement('span');
+    badge.className = 'played-badge';
+    badge.textContent = tr.badge_played;
+    thumb.appendChild(badge);
+  }
+  card.appendChild(thumb);
+
+  const body = document.createElement('span');
+  body.className = 'card-body';
+
+  const titleRow = document.createElement('span');
+  titleRow.className = 'card-title-row';
+
+  const name = document.createElement('span');
+  name.className = 'card-title';
+  name.textContent = displayName(g);
+  titleRow.appendChild(name);
+
+  if (g.stream_url) {
+    const video = document.createElement('a');
+    video.className = 'stream-link';
+    video.href = g.stream_url;
+    video.target = '_blank';
+    video.rel = 'noopener';
+    video.title = tr.watch_stream;
+    video.setAttribute('aria-label', tr.stream_link_label(displayName(g)));
+    video.textContent = '▶';
+    titleRow.appendChild(video);
+  }
+  body.appendChild(titleRow);
+
+  const meta = document.createElement('span');
+  meta.className = 'card-meta';
+  if (g.showPlaytime) {
+    const hours = g.playtime_forever / 60;
+    const span = document.createElement('span');
+    if (g.playtime_forever > 0) {
+      span.className = 'meta-row';
+      span.textContent = tr.playtime(Math.round(hours * 10) / 10);
+    } else {
+      span.className = 'meta-row meta-row-unplayed';
+      span.textContent = tr.playtime_none;
+    }
+    meta.appendChild(span);
+  }
+  if (g.showLastPlayed) {
+    const span = document.createElement('span');
+    span.className = 'meta-row';
+    span.textContent = tr.last_played(formatDate(g.rtime_last_played));
+    meta.appendChild(span);
+  }
+  // 発売日は表示スイッチが無く、データがあれば常時表示する(REQ-036)
+  if (g.release_date) {
+    const span = document.createElement('span');
+    span.className = 'meta-row';
+    span.textContent = tr.release_date(g.release_ts ? formatDate(g.release_ts) : g.release_date);
+    meta.appendChild(span);
+  }
+  if (g.showDeveloper) {
+    const span = document.createElement('span');
+    span.className = 'meta-row';
+    span.textContent = tr.developer(g.developer);
+    meta.appendChild(span);
+  }
+  body.appendChild(meta);
+  card.appendChild(body);
+  return card;
+}
+
 function render() {
   const { data } = state;
   const tr = t();
@@ -189,25 +325,29 @@ function render() {
   document.documentElement.lang = state.lang;
   $('lang-toggle').textContent = tr.lang_button;
 
+  if (state.loadError) {
+    showNotice(tr.notice_load_error_title, tr.notice_load_error_text);
+    return;
+  }
+
   if (!data) return;
 
   $('site-title').textContent = data.site.title;
   document.title = data.site.title;
   $('site-description').textContent = data.site.description;
 
-  // ヘッダーのチャンネルリンク
+  // ヘッダーのチャンネルリンク(▶はテキスト表現・REQ-039 確定事項7)
   const channel = $('channel-link');
   if (data.site.channel_url) {
     channel.href = data.site.channel_url;
-    $('channel-link-label').textContent = tr.channel;
+    channel.textContent = `▶ ${tr.channel}`;
     channel.hidden = false;
   } else {
     channel.hidden = true;
   }
 
   if (!data.published) {
-    $('notice').textContent = tr.unpublished;
-    $('notice').hidden = false;
+    showNotice(tr.notice_unpublished_title, tr.notice_unpublished_text);
     $('controls').hidden = true;
     $('grid').innerHTML = '';
     $('stats').innerHTML = '';
@@ -217,18 +357,29 @@ function render() {
   $('notice').hidden = true;
   $('controls').hidden = false;
 
-  // 統計
+  // 統計(値・単位分割・REQ-039 確定事項6)
   const totalHours = Math.round(
     data.games.reduce((sum, g) => sum + g.playtime_forever, 0) / 60
   );
-  const stats = [tr.stats_games(data.games.length)];
-  if (data.site.show_playtime) stats.push(tr.stats_hours(totalHours));
-  $('stats').innerHTML = stats
-    .map((s) => `<span class="stat">${s}</span>`)
-    .join('');
+  const statsHtml = [];
+  statsHtml.push(
+    `<li class="stat-chip"><span class="stat-chip-value">${data.games.length}</span>${tr.stats_games_unit}</li>`
+  );
+  if (data.site.show_playtime) {
+    statsHtml.push(
+      `<li class="stat-chip">${tr.stats_hours_prefix}<span class="stat-chip-value">${totalHours.toLocaleString(
+        state.lang === 'ja' ? 'ja-JP' : 'en-US'
+      )}</span>${tr.stats_hours_unit}</li>`
+    );
+  }
+  $('stats').innerHTML = statsHtml.join('');
 
   // コントロール
   $('search').placeholder = tr.search_placeholder;
+  $('search').setAttribute('aria-label', tr.aria_search);
+  $('filter').setAttribute('aria-label', tr.aria_filter);
+  $('sort').setAttribute('aria-label', tr.aria_sort);
+
   // 非表示にした項目はソート選択肢からも外す(REQ-029)。
   // 名前順しか残らない場合はソート自体が無意味なのでセレクトごと隠す(REQ-030)
   const sortOptions = [['name', tr.sort_name]];
@@ -269,104 +420,27 @@ function render() {
   const grid = $('grid');
   grid.innerHTML = '';
   for (const g of games) {
-    // ストアリンクは全面オーバーレイの <a>、配信リンクはその上に重ねる別の <a>。
-    // (<a> の入れ子は不正なため、カード自体は <div> にする)
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    const overlay = document.createElement('a');
-    overlay.className = 'card-overlay';
-    overlay.href = `https://store.steampowered.com/app/${g.appid}/`;
-    overlay.target = '_blank';
-    overlay.rel = 'noopener';
-    overlay.setAttribute('aria-label', displayName(g));
-    card.appendChild(overlay);
-
-    const img = document.createElement('img');
-    img.className = 'card-image';
-    img.loading = 'lazy';
-    img.alt = g.name;
-    const imgCandidates = imageCandidateUrls(g);
-    let imgIndex = 0;
-    img.src = imgCandidates[imgIndex];
-    img.onerror = () => {
-      imgIndex += 1;
-      if (imgIndex < imgCandidates.length) {
-        img.src = imgCandidates[imgIndex];
-      } else {
-        img.remove();
-        card.classList.add('no-image');
-      }
+    // 表示スイッチはゲームオブジェクト自体を汚さず、カード生成時に一時プロパティとして渡す
+    const withSwitches = {
+      ...g,
+      showPlayed: data.site.show_played !== false && g.played,
+      showPlaytime: data.site.show_playtime && g.show_playtime !== false,
+      showLastPlayed: data.site.show_last_played && g.rtime_last_played > 0,
+      showDeveloper: data.site.show_developer !== false && !!g.developer,
     };
-    card.appendChild(img);
-
-    if (data.site.show_played !== false && g.played) {
-      const badge = document.createElement('span');
-      badge.className = 'card-badge';
-      badge.textContent = t().badge_played;
-      card.appendChild(badge);
-    }
-
-    const body = document.createElement('div');
-    body.className = 'card-body';
-
-    const name = document.createElement('div');
-    name.className = 'card-name';
-    name.textContent = displayName(g);
-    body.appendChild(name);
-
-    if (g.stream_url) {
-      body.classList.add('has-video');
-      const video = document.createElement('a');
-      video.className = 'video-link';
-      video.href = g.stream_url;
-      video.target = '_blank';
-      video.rel = 'noopener';
-      video.title = tr.watch_stream;
-      video.setAttribute('aria-label', tr.watch_stream);
-      video.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2.2 14.5v-9l7 4.5-7 4.5z"/></svg>';
-      body.appendChild(video);
-    }
-
-    const meta = document.createElement('div');
-    meta.className = 'card-meta';
-    if (data.site.show_playtime && g.show_playtime !== false) {
-      const hours = g.playtime_forever / 60;
-      const span = document.createElement('span');
-      span.textContent =
-        g.playtime_forever > 0
-          ? t().playtime(Math.round(hours * 10) / 10)
-          : t().playtime_none;
-      meta.appendChild(span);
-    }
-    if (data.site.show_last_played && g.rtime_last_played > 0) {
-      const span = document.createElement('span');
-      span.textContent = t().last_played(formatDate(g.rtime_last_played));
-      meta.appendChild(span);
-    }
-    // 発売日は表示スイッチが無く、データがあれば常時表示する(REQ-036)
-    if (g.release_date) {
-      const span = document.createElement('span');
-      span.textContent = t().release_date(g.release_ts ? formatDate(g.release_ts) : g.release_date);
-      meta.appendChild(span);
-    }
-    if (data.site.show_developer !== false && g.developer) {
-      const span = document.createElement('span');
-      span.textContent = t().developer(g.developer);
-      meta.appendChild(span);
-    }
-    body.appendChild(meta);
-    card.appendChild(body);
-    grid.appendChild(card);
+    grid.appendChild(buildCard(withSwitches, tr));
   }
 
-  const empty = $('empty-message');
+  const emptyWrap = $('empty-message');
+  const emptyIcon = $('empty-icon');
+  const emptyText = $('empty-text');
   if (games.length === 0) {
-    empty.textContent = data.games.length === 0 ? tr.no_games : tr.no_match;
-    empty.hidden = false;
+    const noGamesAtAll = data.games.length === 0;
+    emptyIcon.textContent = noGamesAtAll ? '🗄' : '🔍';
+    emptyText.textContent = noGamesAtAll ? tr.no_games : tr.no_match;
+    emptyWrap.hidden = false;
   } else {
-    empty.hidden = true;
+    emptyWrap.hidden = true;
   }
 
   // フッター
@@ -410,8 +484,8 @@ async function main() {
     state.data = await res.json();
   } catch (err) {
     console.error(err);
-    $('notice').textContent = t().load_error;
-    $('notice').hidden = false;
+    state.loadError = true;
+    render();
     return;
   }
 

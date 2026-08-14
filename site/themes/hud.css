@@ -1,0 +1,164 @@
+/* ============================================================
+   hud.css (site/themes/hud.css)
+   design-deliverable/css/theme-hud.css を移植。
+   「.theme-hud」を「:root」に置換し(<html class> 不要にするため)、
+   自前ホストの @font-face を追加している(REQ-039 WP1)。
+   フォント: Chakra Petch(見出し・数値, 自前ホスト subset) / 本文は system-ui 等システムフォント代替
+   ============================================================ */
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============================================================
+   theme-hud — 戦術HUD: 暗い緑基調・コーナーブラケット・走査線
+   (デザインカタログ variant: hud)
+
+   本文フォントは Noto Sans JP を同梱せずシステム代替(--sgs-font, サイズ過大のため)。
+   見出し・数値フォント(Chakra Petch)のみ上記の @font-face で自前ホストしている。
+   ============================================================ */
+
+:root {
+  --sgs-bg: #030a06;
+  --sgs-bg-image:
+    linear-gradient(rgba(80, 250, 140, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80, 250, 140, .05) 1px, transparent 1px);
+  --sgs-surface: rgba(4, 14, 8, .9);
+  --sgs-surface-2: #061a0e;
+  --sgs-text: #d8ffe6;
+  --sgs-text-muted: #86cea2;
+  --sgs-text-dim: #6ba885;
+  --sgs-border: rgba(80, 250, 140, .45);
+  --sgs-border-strong: rgba(80, 250, 140, .7);
+
+  --sgs-accent: #55fa8c;
+  --sgs-accent-2: #9dffc4;
+  --sgs-accent-contrast: #02160a;
+  --sgs-stream: #ff5457;
+  --sgs-badge-bg: rgba(85, 250, 140, .16);
+  --sgs-badge-text: #baffd4;
+  --sgs-focus: #55fa8c;
+
+  --sgs-radius: 4px;
+  --sgs-radius-sm: 3px;
+  --sgs-radius-pill: 3px;
+  --sgs-card-shadow: none;
+  --sgs-card-shadow-hover: 0 0 0 1px rgba(85, 250, 140, .5);
+
+  --sgs-font: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: 'Chakra Petch', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-num: 'Chakra Petch', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-title-weight: 600;
+  --sgs-title-spacing: .06em;
+  --sgs-title-transform: uppercase;
+  --sgs-card-title-weight: 600;
+  --sgs-label-spacing: .18em;
+}
+
+:root .sgs-root { background-size: 32px 32px, 32px 32px; }
+
+:root .site-title {
+  color: #55fa8c;
+  text-shadow: 0 0 14px rgba(85, 250, 140, .45);
+}
+:root .site-desc { color: #8fd8ab; }
+
+:root .stat-chip {
+  background: rgba(4, 14, 8, .8);
+  color: #86cea2;
+  text-transform: uppercase;
+}
+:root .stat-chip-value { color: #9dffc4; }
+
+:root .lang-toggle,
+:root .channel-link { text-transform: uppercase; }
+
+/* カード: 四隅のコーナーブラケット（背景画像で軽量に） */
+:root .game-card {
+  background-image:
+    linear-gradient(rgba(85, 250, 140, .85), rgba(85, 250, 140, .85)),
+    linear-gradient(rgba(85, 250, 140, .85), rgba(85, 250, 140, .85)),
+    linear-gradient(rgba(85, 250, 140, .85), rgba(85, 250, 140, .85)),
+    linear-gradient(rgba(85, 250, 140, .85), rgba(85, 250, 140, .85));
+  background-repeat: no-repeat;
+  background-size: 12px 2px, 2px 12px, 12px 2px, 2px 12px;
+  background-position:
+    left 4px top 4px, left 4px top 4px,
+    right 4px bottom 4px, right 4px bottom 4px;
+}
+
+:root .game-card:hover,
+:root .game-card:focus-within {
+  border-color: rgba(85, 250, 140, .85);
+  box-shadow: 0 0 0 1px rgba(85, 250, 140, .3);
+}
+
+/* サムネ上の走査線（ホバー時のみ動かす=300枚でも軽い） */
+@keyframes sgs-hud-scan {
+  from { transform: translateY(-120%); }
+  to   { transform: translateY(320%); }
+}
+:root .card-thumb::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: rgba(160, 255, 195, .5);
+  opacity: 0;
+  pointer-events: none;
+}
+:root .game-card:hover .card-thumb::after,
+:root .game-card:focus-within .card-thumb::after {
+  opacity: 1;
+  animation: sgs-hud-scan 1.8s linear infinite;
+}
+
+:root .card-thumb-img { filter: saturate(.85) hue-rotate(-8deg); }
+:root .game-card:hover .card-thumb-img { filter: saturate(1); }
+
+:root .card-thumb-placeholder {
+  background:
+    repeating-linear-gradient(45deg, rgba(85, 250, 140, .09) 0 6px, transparent 6px 12px),
+    #061a0e;
+  color: rgba(133, 206, 162, .9);
+}
+
+:root .played-badge {
+  border: 1px solid rgba(85, 250, 140, .6);
+  text-transform: uppercase;
+}
+
+:root .card-title { color: #d8ffe6; }
+:root .card-meta { color: #86cea2; }
+:root .meta-row-unplayed { color: #6ba885; }
+
+:root .empty-state,
+:root .notice-panel {
+  background: rgba(4, 14, 8, .8);
+  border-color: rgba(85, 250, 140, .4);
+}
+:root .empty-state-text { color: #8fd8ab; }
+:root .notice-title { color: #55fa8c; }

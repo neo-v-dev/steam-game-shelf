@@ -252,6 +252,20 @@ export function buildPublicData(catalog, settings, generatedAt, excluded = []) {
   };
 }
 
+// ---- テーマ(デザイン)の解決(REQ-038) ----
+
+/**
+ * settings.theme を、実在するテーマ一覧(site/themes/ 内のCSSファイル名から拡張子を除いたID一覧)と
+ * 照合して解決する。availableIds に含まれていればそのまま返し、未設定・削除済み・
+ * 存在しないIDなど含まれない場合は既定テーマ "default" にフォールバックする(REQ-039)。
+ */
+export function resolveThemeFile(themeId, availableIds) {
+  if (typeof themeId === 'string' && Array.isArray(availableIds) && availableIds.includes(themeId)) {
+    return themeId;
+  }
+  return 'default';
+}
+
 /**
  * 行頭コメント(// ...)付き JSON をパースする。
  * 文字列内の "//"(URL 等)を壊さないよう、行全体がコメントの行のみを除去する。

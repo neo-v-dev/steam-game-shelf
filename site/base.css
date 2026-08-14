@@ -1,0 +1,551 @@
+/* ============================================================
+   Steam Game Shelf — base.css
+   構造・レイアウト・状態定義のみ。色/余白/角丸/フォントは
+   すべて CSS カスタムプロパティ経由。テーマ値は theme-*.css。
+
+   移植手順:
+     <link rel="stylesheet" href="base.css">
+     <link rel="stylesheet" href="theme-neon.css">   ← 1つだけ
+     <html class="theme-neon"> または theme-*.css 側の
+     .theme-neon を :root に置換して使用。
+
+   外部依存なし(Google Fonts のみ任意)。装飾は全て class ベース。
+
+   本ファイルは design-deliverable/css/base.css(納品物)をそのまま採用し、
+   末尾に site 固有の追補(REQ-039 WP1)のみを加えたもの。
+   ============================================================ */
+
+/* ---- 既定トークン(テーマ未適用でも壊れない値) ---- */
+:root {
+  /* 面と文字 */
+  --sgs-bg: #15161c;
+  --sgs-bg-image: none;
+  --sgs-surface: #1e2029;
+  --sgs-surface-2: #262933;
+  --sgs-text: #f2f3f7;
+  --sgs-text-muted: #a7abb8;
+  --sgs-text-dim: #868b98;
+  --sgs-border: #333744;
+  --sgs-border-strong: #454a5a;
+
+  /* アクセント */
+  --sgs-accent: #6ea8ff;
+  --sgs-accent-2: #9f7bff;
+  --sgs-accent-contrast: #0d0f14;
+  --sgs-stream: #ff4245;          /* 配信リンク▶(YouTube感の赤) */
+  --sgs-badge-bg: #2f6b46;
+  --sgs-badge-text: #eafff1;
+  --sgs-focus: #ffffff;
+
+  /* 形 */
+  --sgs-radius: 10px;
+  --sgs-radius-sm: 6px;
+  --sgs-radius-pill: 999px;
+  --sgs-border-width: 1px;
+  --sgs-card-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  --sgs-card-shadow-hover: 0 6px 16px rgba(0, 0, 0, .45);
+
+  /* 余白 */
+  --sgs-gap: 16px;
+  --sgs-gap-sm: 8px;
+  --sgs-pad: 20px;
+  --sgs-card-pad: 12px;
+
+  /* 文字 */
+  --sgs-font: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: var(--sgs-font);
+  --sgs-font-num: var(--sgs-font);
+  --sgs-title-size: clamp(24px, 5vw, 40px);
+  --sgs-title-weight: 700;
+  --sgs-title-spacing: 0;
+  --sgs-title-transform: none;
+  --sgs-card-title-size: 15px;
+  --sgs-card-title-weight: 600;
+  --sgs-meta-size: 12px;
+  --sgs-label-spacing: 0;
+
+  /* 動き */
+  --sgs-ease: cubic-bezier(.2, .7, .3, 1);
+  --sgs-dur: .16s;
+}
+
+/* ---- リセット ---- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+.sgs-root {
+  margin: 0;
+  padding: 0;
+  background: var(--sgs-bg);
+  background-image: var(--sgs-bg-image);
+  color: var(--sgs-text);
+  font-family: var(--sgs-font);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+.sgs-page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: var(--sgs-pad);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sgs-gap) * 1.5);
+}
+
+a { color: var(--sgs-accent); }
+a:hover { color: var(--sgs-accent-2); }
+
+/* ---- 共通フォーカスリング(キーボード可視化) ---- */
+.game-card:focus-within,
+.card-link:focus-visible,
+.stream-link:focus-visible,
+.channel-link:focus-visible,
+.lang-toggle:focus-visible,
+.search-input:focus-visible,
+.filter-select:focus-visible,
+.sort-select:focus-visible,
+.footer-credit:focus-visible {
+  outline: 2px solid var(--sgs-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   4-1 サイトヘッダー
+   ============================================================ */
+.site-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sgs-gap-sm);
+  padding: var(--sgs-pad) 0 calc(var(--sgs-pad) - 4px);
+  border-bottom: var(--sgs-border-width) solid var(--sgs-border);
+}
+
+.site-title {
+  margin: 0;
+  font-family: var(--sgs-font-title);
+  font-size: var(--sgs-title-size);
+  font-weight: var(--sgs-title-weight);
+  letter-spacing: var(--sgs-title-spacing);
+  text-transform: var(--sgs-title-transform);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* 説明文(空の場合は要素を出さない or 空でも余白が崩れない) */
+.site-desc {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--sgs-text-muted);
+  font-size: 14px;
+  text-wrap: pretty;
+}
+.site-desc:empty { display: none; }
+
+.header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sgs-gap-sm);
+  margin-top: 4px;
+}
+
+.stat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sgs-gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border: var(--sgs-border-width) solid var(--sgs-border);
+  border-radius: var(--sgs-radius-pill);
+  background: var(--sgs-surface);
+  color: var(--sgs-text-muted);
+  font-family: var(--sgs-font-num);
+  font-size: 12px;
+  letter-spacing: var(--sgs-label-spacing);
+  white-space: nowrap;
+}
+.stat-chip-value { color: var(--sgs-text); font-weight: 700; }
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sgs-gap-sm);
+  margin-left: auto;
+}
+
+.channel-link,
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--sgs-radius-sm);
+  font-family: var(--sgs-font-title);
+  font-size: 13px;
+  letter-spacing: var(--sgs-label-spacing);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--sgs-dur) var(--sgs-ease),
+              border-color var(--sgs-dur) var(--sgs-ease),
+              color var(--sgs-dur) var(--sgs-ease);
+}
+
+.channel-link {
+  border: var(--sgs-border-width) solid var(--sgs-stream);
+  background: transparent;
+  color: var(--sgs-stream);
+  white-space: nowrap;
+}
+.channel-link:hover {
+  background: var(--sgs-stream);
+  color: #fff;
+}
+
+.lang-toggle {
+  border: var(--sgs-border-width) solid var(--sgs-border-strong);
+  background: var(--sgs-surface);
+  color: var(--sgs-text);
+}
+.lang-toggle:hover {
+  border-color: var(--sgs-accent);
+  color: var(--sgs-accent);
+}
+
+/* ============================================================
+   4-2 コントロール行(要素1〜3個のどの組合せでも崩れない)
+   ============================================================ */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sgs-gap-sm);
+  align-items: center;
+}
+
+.search-input,
+.filter-select,
+.sort-select {
+  min-width: 0;
+  padding: 9px 12px;
+  border: var(--sgs-border-width) solid var(--sgs-border);
+  border-radius: var(--sgs-radius-sm);
+  background: var(--sgs-surface);
+  color: var(--sgs-text);
+  font-family: var(--sgs-font);
+  font-size: 14px;
+  transition: border-color var(--sgs-dur) var(--sgs-ease);
+}
+
+.search-input {
+  flex: 1 1 220px;
+  min-width: 140px;
+}
+.search-input::placeholder { color: var(--sgs-text-dim); }
+
+.filter-select,
+.sort-select {
+  flex: 0 1 auto;
+  min-width: 130px;
+  cursor: pointer;
+}
+
+.search-input:hover,
+.filter-select:hover,
+.sort-select:hover { border-color: var(--sgs-border-strong); }
+
+.search-input:focus,
+.filter-select:focus,
+.sort-select:focus {
+  border-color: var(--sgs-accent);
+  outline: none;
+}
+
+/* ============================================================
+   4-4 カードグリッド(360pxで2列 → PCで4〜5列)
+   ============================================================ */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--sgs-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 600px) {
+  .game-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .game-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+
+/* ============================================================
+   4-3 ゲームカード
+   ------------------------------------------------------------
+   .game-card
+     .card-thumb              460:215 固定比
+       .card-thumb-img        画像あり
+       .card-thumb-placeholder 画像なし
+       .played-badge          プレイ済み(任意)
+     .card-body
+       .card-title-row
+         .card-title
+         .stream-link         ▶(任意・カードリンクより上)
+       .card-meta > .meta-row × 0〜4
+     .card-link               カード全面のストアリンク
+   ============================================================ */
+.game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--sgs-border-width) solid var(--sgs-border);
+  border-radius: var(--sgs-radius);
+  background: var(--sgs-surface);
+  box-shadow: var(--sgs-card-shadow);
+  transition: transform var(--sgs-dur) var(--sgs-ease),
+              border-color var(--sgs-dur) var(--sgs-ease),
+              box-shadow var(--sgs-dur) var(--sgs-ease);
+}
+
+.game-card:hover,
+.game-card:focus-within {
+  transform: translateY(-2px);
+  border-color: var(--sgs-accent);
+  box-shadow: var(--sgs-card-shadow-hover);
+}
+
+/* カード全面リンク(画像・本文の下、▶より下) */
+.card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  text-indent: -9999px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.card-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 460 / 215;
+  background: var(--sgs-surface-2);
+  overflow: hidden;
+}
+
+.card-thumb-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .25s var(--sgs-ease), filter var(--sgs-dur) var(--sgs-ease);
+}
+.game-card:hover .card-thumb-img,
+.game-card:focus-within .card-thumb-img { transform: scale(1.03); }
+
+/* 画像なし */
+.card-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--sgs-surface-2);
+  color: var(--sgs-text-dim);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.played-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: var(--sgs-radius-pill);
+  background: var(--sgs-badge-bg);
+  color: var(--sgs-badge-text);
+  font-family: var(--sgs-font-title);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--sgs-label-spacing);
+  white-space: nowrap;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sgs-card-pad);
+}
+
+.card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--sgs-font-title);
+  font-size: var(--sgs-card-title-size);
+  font-weight: var(--sgs-card-title-weight);
+  line-height: 1.35;
+  color: var(--sgs-text);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.stream-link {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: var(--sgs-radius-sm);
+  background: transparent;
+  color: var(--sgs-stream);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+  transition: background var(--sgs-dur) var(--sgs-ease), color var(--sgs-dur) var(--sgs-ease);
+}
+.stream-link:hover {
+  background: var(--sgs-stream);
+  color: #fff;
+}
+
+/* メタ情報 0〜4行 */
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  color: var(--sgs-text-muted);
+  font-family: var(--sgs-font-num);
+  font-size: var(--sgs-meta-size);
+  line-height: 1.45;
+}
+.card-meta:empty { display: none; }
+.meta-row { display: block; overflow-wrap: anywhere; }
+.meta-row-unplayed { color: var(--sgs-text-dim); }
+
+/* ============================================================
+   4-4 空状態 / 4-5 準備中パネル
+   ============================================================ */
+.empty-state,
+.notice-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sgs-gap-sm);
+  padding: calc(var(--sgs-pad) * 2) var(--sgs-pad);
+  border: var(--sgs-border-width) dashed var(--sgs-border);
+  border-radius: var(--sgs-radius);
+  background: var(--sgs-surface);
+  text-align: center;
+}
+
+.empty-state-icon {
+  font-size: 26px;
+  line-height: 1;
+  opacity: .8;
+}
+.empty-state-text {
+  margin: 0;
+  color: var(--sgs-text-muted);
+  font-size: 14px;
+}
+
+.notice-panel {
+  border-style: solid;
+  gap: 12px;
+}
+.notice-title {
+  margin: 0;
+  font-family: var(--sgs-font-title);
+  font-size: 20px;
+  font-weight: var(--sgs-title-weight);
+  letter-spacing: var(--sgs-title-spacing);
+  text-transform: var(--sgs-title-transform);
+  color: var(--sgs-text);
+}
+.notice-text {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--sgs-text-muted);
+  font-size: 14px;
+  text-wrap: pretty;
+}
+
+/* ============================================================
+   4-6 フッター
+   ============================================================ */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sgs-pad) 0;
+  border-top: var(--sgs-border-width) solid var(--sgs-border);
+  color: var(--sgs-text-dim);
+  font-size: 11px;
+  letter-spacing: var(--sgs-label-spacing);
+}
+.footer-sep { opacity: .6; }
+.footer-credit {
+  color: var(--sgs-text-dim);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.footer-credit:hover {
+  color: var(--sgs-accent);
+  border-bottom-color: currentColor;
+}
+
+/* ============================================================
+   動きを減らす設定への配慮
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: .001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001s !important;
+  }
+  .game-card:hover { transform: none; }
+}
+
+/* ============================================================
+   site 追補(REQ-039 WP1)
+   納品CSSは無改変のまま、以下のみをここに追加する:
+   - [hidden] の全面死バグ対策(納品CSSに [hidden] ルールが無く、
+     JS が要素に hidden 属性を付けても他の display 指定に
+     負けて表示されたままになる潜在バグがあったため)
+   - body/html の素の余白リセット(.sgs-root は body に付与する
+     運用のため margin:0 は既にカバーされるが、念のための保険)
+   ============================================================ */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}

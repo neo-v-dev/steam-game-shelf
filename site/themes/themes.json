@@ -1,0 +1,22 @@
+[
+  {
+    "id": "default",
+    "label": "Default (dark)"
+  },
+  {
+    "id": "neon",
+    "label": "Neon"
+  },
+  {
+    "id": "hud",
+    "label": "HUD"
+  },
+  {
+    "id": "horror",
+    "label": "Horror"
+  },
+  {
+    "id": "pixel",
+    "label": "Pixel"
+  }
+]

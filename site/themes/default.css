@@ -1,0 +1,65 @@
+/* ============================================================
+   default.css (site/themes/default.css)
+
+   既定テーマ。REQ-039 以前の "dark" テーマ(site/themes/dark.css)の見た目を、
+   新構造(design-deliverable/css/base.css)の --sgs-* トークン+最小オーバーライドへ
+   移植したもの(確定事項1)。base.css 側の既定トークンはフェイルセーフとして残るが、
+   実際の既定色はこのファイルが正(二重管理はしない)。
+
+   フォントはシステム代替のみ(このテーマは Google Fonts 由来のフォントを使わない。
+   旧 dark.css もフォント指定を持たなかったため、base.css の既定 --sgs-font を継承する)。
+   ============================================================ */
+
+:root {
+  /* 旧 dark.css の --bg/--bg-card/--bg-card-hover/--text/--text-dim/--accent/--border を
+     そのまま --sgs-* へ対応付け(色は変えない) */
+  --sgs-bg: #14171e;
+  --sgs-bg-image: none;
+  --sgs-surface: #1d222c;
+  --sgs-surface-2: #262d3a;
+  --sgs-text: #e6e9ef;
+  --sgs-text-muted: #9aa3b2;
+  --sgs-text-dim: #9aa3b2;
+  --sgs-border: #2b3342;
+  --sgs-border-strong: #3a4356;
+
+  --sgs-accent: #5aa9ff;
+  --sgs-accent-2: #7fbcff;
+  --sgs-accent-contrast: #0d1420;
+  --sgs-stream: #ff4245;
+  --sgs-badge-bg: rgba(13, 20, 32, 0.85);
+  --sgs-badge-text: #5aa9ff;
+  --sgs-focus: #5aa9ff;
+
+  --sgs-radius: 10px;
+  --sgs-radius-sm: 8px;
+}
+
+/* 旧 site-header は上から下へのグラデーションがかかっていた */
+.site-header {
+  background: linear-gradient(180deg, #1a1f29 0%, var(--sgs-bg) 100%);
+}
+
+/* 旧 .channel-link は塗りボタン(アクセント背景)だった。
+   base.css の既定は --sgs-stream を使ったアウトラインボタンなので上書きする */
+.channel-link {
+  border-color: var(--sgs-accent);
+  background: var(--sgs-accent);
+  color: var(--sgs-accent-contrast);
+}
+.channel-link:hover {
+  background: var(--sgs-accent);
+  color: var(--sgs-accent-contrast);
+  filter: brightness(1.1);
+}
+
+/* 旧 .card-badge はアクセント色の枠付きバッジだった */
+.played-badge {
+  border: 1px solid var(--sgs-accent);
+}
+
+/* 旧 .card-image の背景(画像読み込み中/無しの下地)は bg-card よりやや暗い色だった */
+.card-thumb,
+.card-thumb-placeholder {
+  background: #0e1116;
+}

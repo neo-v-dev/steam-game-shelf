@@ -1,0 +1,145 @@
+/* ============================================================
+   neon.css (site/themes/neon.css)
+   design-deliverable/css/theme-neon.css を移植。
+   「.theme-neon」を「:root」に置換し(<html class> 不要にするため)、
+   自前ホストの @font-face を追加している(REQ-039 WP1)。
+   フォント: Chakra Petch(見出し・数値, 自前ホスト subset) / 本文は system-ui 等システムフォント代替
+   ============================================================ */
+
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Chakra Petch';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/chakra-petch-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============================================================
+   theme-neon — ダークガラス + シアン/ピンクのグロー
+   (デザインカタログ variant: neon)
+
+   本文フォントは Noto Sans JP を同梱せずシステム代替(--sgs-font, サイズ過大のため)。
+   見出し・数値フォント(Chakra Petch)のみ上記の @font-face で自前ホストしている。
+   ============================================================ */
+
+:root {
+  --sgs-bg: #06070f;
+  --sgs-bg-image:
+    radial-gradient(80% 60% at 12% -10%, rgba(57, 232, 255, .12), transparent 70%),
+    radial-gradient(70% 55% at 92% 4%, rgba(255, 93, 240, .10), transparent 72%);
+  --sgs-surface: rgba(10, 12, 26, .88);
+  --sgs-surface-2: #0b1024;
+  --sgs-text: #ffffff;
+  --sgs-text-muted: #9fe8ff;
+  --sgs-text-dim: #7fa8c4;
+  --sgs-border: rgba(120, 220, 255, .35);
+  --sgs-border-strong: rgba(120, 220, 255, .6);
+
+  --sgs-accent: #39e8ff;
+  --sgs-accent-2: #ff5df0;
+  --sgs-accent-contrast: #04121a;
+  --sgs-stream: #ff4245;
+  --sgs-badge-bg: rgba(255, 93, 240, .18);
+  --sgs-badge-text: #ffd4fa;
+  --sgs-focus: #39e8ff;
+
+  --sgs-radius: 14px;
+  --sgs-radius-sm: 8px;
+  --sgs-card-shadow: none;
+  --sgs-card-shadow-hover: 0 0 0 1px rgba(57, 232, 255, .5);
+
+  --sgs-font: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: 'Chakra Petch', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-num: 'Chakra Petch', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-title-spacing: .02em;
+  --sgs-label-spacing: .12em;
+}
+
+/* タイトルのネオン発光 */
+:root .site-title {
+  color: #fff;
+  text-shadow: 0 0 18px rgba(57, 232, 255, .55), 0 0 34px rgba(255, 93, 240, .3);
+}
+
+:root .site-header { border-bottom-color: rgba(120, 220, 255, .28); }
+
+:root .stat-chip {
+  background: rgba(10, 12, 26, .7);
+  text-transform: uppercase;
+}
+:root .stat-chip-value { text-shadow: 0 0 12px rgba(57, 232, 255, .7); }
+
+:root .lang-toggle { text-transform: uppercase; }
+:root .lang-toggle:hover {
+  box-shadow: 0 0 14px rgba(57, 232, 255, .35);
+}
+:root .channel-link:hover { box-shadow: 0 0 16px rgba(255, 66, 69, .5); }
+
+/* カード: 上辺のグローライン + ホバーで縁が光る */
+:root .game-card { position: relative; }
+:root .game-card::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(57, 232, 255, .9), rgba(255, 93, 240, .7), transparent);
+  opacity: .55;
+  transition: opacity var(--sgs-dur) var(--sgs-ease);
+  pointer-events: none;
+}
+:root .game-card:hover::before,
+:root .game-card:focus-within::before { opacity: 1; }
+
+:root .game-card:hover,
+:root .game-card:focus-within {
+  border-color: rgba(57, 232, 255, .75);
+  box-shadow: 0 0 0 1px rgba(57, 232, 255, .35), 0 8px 24px rgba(57, 232, 255, .12);
+}
+
+:root .card-thumb-img { filter: saturate(1.05); }
+:root .card-thumb-placeholder {
+  background:
+    linear-gradient(120deg, rgba(57, 232, 255, .1), rgba(255, 93, 240, .1)),
+    #0b1024;
+  color: rgba(159, 232, 255, .7);
+  text-shadow: 0 0 14px rgba(57, 232, 255, .5);
+}
+
+:root .played-badge {
+  border: 1px solid rgba(255, 93, 240, .55);
+  text-transform: uppercase;
+  backdrop-filter: none;
+}
+
+:root .card-title { text-shadow: 0 0 10px rgba(57, 232, 255, .18); }
+:root .card-meta { color: #8fd4ea; }
+
+:root .empty-state,
+:root .notice-panel {
+  background: rgba(10, 12, 26, .72);
+  border-color: rgba(120, 220, 255, .3);
+}
+:root .notice-title {
+  text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(57, 232, 255, .5);
+}

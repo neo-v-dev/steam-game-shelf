@@ -44,7 +44,7 @@ From then on the list updates daily. Newly purchased games follow the `default_v
 
 ## Admin page
 
-`https://<username>.github.io/<repo>/admin.html` lets you edit, without touching JSON: per-game visibility (with search), sort (name / playtime / recently played / release date / developer / publisher, applied to both the list and card views — the admin sort always offers all options, regardless of the site-wide developer switch; release date has no display switch, so it's always offered too), played tags, per-game playtime display, per-game playtime, last-played, release date, and developer info, per-game stream/video URLs, site settings (site title, default language, "Card display items" — site-wide switches for playtime display, the played tag, the last-played date, and the developer, channel URL), and the publish state. When sorting by developer or publisher, games with the same developer/publisher are ordered by whichever sort you had selected before switching (name, by default) — the same rule applies on the public page. The default view is the thumbnail card view that mirrors the public page (click a card to toggle visibility); you can switch to a list view, and your choice is remembered. Each "Card display items" switch preserves per-game settings when off, and also affects more than the cards themselves — it changes the top stats bar and/or the played/not-played filter on the public page too. Saving commits via the GitHub API, and the site updates in a minute or two.
+`https://<username>.github.io/<repo>/admin.html` lets you edit, without touching JSON: per-game visibility (with search), sort (name / playtime / recently played / release date / developer / publisher, applied to both the list and card views — the admin sort always offers all options, regardless of the site-wide developer switch; release date has no display switch, so it's always offered too), played tags, per-game playtime display, per-game playtime, last-played, release date, and developer info, per-game stream/video URLs, site settings (site title, default language, design, "Card display items" — site-wide switches for playtime display, the played tag, the last-played date, and the developer, channel URL), and the publish state. When sorting by developer or publisher, games with the same developer/publisher are ordered by whichever sort you had selected before switching (name, by default) — the same rule applies on the public page. The default view is the thumbnail card view that mirrors the public page (click a card to toggle visibility); you can switch to a list view, and your choice is remembered. Each "Card display items" switch preserves per-game settings when off, and also affects more than the cards themselves — it changes the top stats bar and/or the played/not-played filter on the public page too. Switching "Design" previews the admin page's colors immediately (nothing is saved until you save); its options come from CSS files under `site/themes/` (see "Adding a design (theme)" below). Saving commits via the GitHub API, and the site updates in a minute or two.
 
 Saving requires a fine-grained personal access token (GitHub Settings → Developer settings → Fine-grained tokens): limit it to your repository only, with the **Contents: Read and write** permission. When you click "Load", progress and any errors are shown directly under the button (verifying the token → loading data). The token is verified against the target repository first — if it's invalid, scoped to the wrong repository, or lacks write access, loading is blocked with an error right away (instead of only failing later when you try to save). If you haven't run "Update game list" yet, you'll see a "data/catalog.json not found" error with an "Open Actions" button that takes you straight to the workflow run page. The token is stored only in your browser's localStorage and is sent only to api.github.com. Anyone can open the page, but nobody can save without your token. On a shared/public computer, clear your browser's site data after use. Also, GitHub Pages sites under `<username>.github.io` share an origin with any other repository owned by the same account, so JavaScript on another page under the same `<username>.github.io` could in theory read this localStorage (not normally an issue, but be aware if you publish untrusted code under the same `<username>.github.io`). Try the UI with `admin.html?demo=1` (saving is disabled in demo mode).
 
@@ -54,7 +54,7 @@ Each game can carry a "Played" tag. It defaults to on when playtime is over zero
 
 ## Settings
 
-See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `show_playtime`, `show_played` (also hides the played/not-played filter when off), `show_last_played`, `show_developer`, `channel_url`, `default_visibility`, `fetch_japanese_names`. Turning any of `show_playtime` / `show_played` / `show_last_played` / `show_developer` off also removes the matching sort option(s) from the public page (`show_developer` removes both "Developer" and "Publisher"), and hides the sort dropdown entirely if only "Name" remains.
+See the comments in `config/settings.jsonc`: `published`, `site_title`, `site_description`, `default_lang` (`ja`/`en`), `theme` (the CSS filename, without extension, under `site/themes/`; an unknown id falls back to `default` at build time), `show_playtime`, `show_played` (also hides the played/not-played filter when off), `show_last_played`, `show_developer`, `channel_url`, `default_visibility`, `fetch_japanese_names`. Turning any of `show_playtime` / `show_played` / `show_last_played` / `show_developer` off also removes the matching sort option(s) from the public page (`show_developer` removes both "Developer" and "Publisher"), and hides the sort dropdown entirely if only "Name" remains.
 
 Note on Japanese titles: the Steam store API is heavily rate-limited, so localized names are fetched up to 150 per run and cached in `data/catalog.json`. Large libraries fill in over a few runs (daily auto-updates or manual runs).
 
@@ -71,6 +71,16 @@ The developer and publisher (the first one, when a game lists several) are fetch
 ### About release date
 
 The release date is fetched from the store API alongside the localized name, image, and developer/publisher, and cached in `data/catalog.json`. It has no display or sort on/off switch — it's always shown when available (missing dates sort last). Upcoming ("coming soon") games and dates in formats we can't parse (quarter labels like "Q3 2026", year-only, etc.) aren't usable for date sorting.
+
+### Adding a design (theme)
+
+The site's design lives in CSS files under `site/themes/` (one file per theme). Five themes ship by default: **default (dark), neon, hud, horror, and pixel**. Display fonts used by some themes (Press Start 2P / DotGothic16 / Zen Old Mincho / Chakra Petch) are bundled as woff2 under `site/fonts/` (all SIL Open Font License); only the selected theme's fonts are loaded.
+
+1. Add a new CSS file under `site/themes/` (e.g. `light.css`). Put the `:root` tokens (`--sgs-bg`, `--sgs-surface`, `--sgs-text`, `--sgs-accent`, `--sgs-border`, `--sgs-radius`, etc. — see the defaults at the top of `site/base.css`) and any decorative overrides there. Layout lives in `site/base.css` and doesn't need to change (copying `site/themes/default.css` as a starting point is the quickest way).
+2. Add a line to `site/themes/themes.json`, e.g. `{ "id": "light", "label": "Light" }`.
+3. Set `"theme"` in `config/settings.jsonc` to the new id, or pick it from the "Site settings → Design" dropdown on the admin page and save. An unknown id automatically falls back to `default` when you run `node scripts/build.mjs`.
+
+On the admin page, switching designs previews immediately (nothing is saved until you click Save).
 
 ## Games that can't be fetched
 
@@ -89,7 +99,7 @@ Hiding removes a game from **this site only** — it is not true secrecy. The St
 
 ```bash
 STEAM_API_KEY=xxx STEAM_ID=7656... node scripts/update.mjs
-node scripts/build.mjs
+node scripts/build.mjs   # also generates site/data/theme.css
 npx serve site   # or: python3 -m http.server -d site 8000
 
 # Tests (no dependencies; uses node:test only)
