@@ -1,0 +1,111 @@
+/* ============================================================
+   minimal.css (site/themes/minimal.css)
+   design-deliverable/css/theme-minimal.css を移植。
+   「.theme-minimal」を「:root」に置換している(<html class> 不要にするため、REQ-040)。
+   フォント: Helvetica / Arial(システムフォントのみ・@font-face の追加なし・Web フォント同梱なし)
+   ============================================================ */
+
+:root {
+  --sgs-bg: #fafaf7;
+  --sgs-bg-image: none;
+  --sgs-surface: #ffffff;
+  --sgs-surface-2: #f0f0ea;
+  --sgs-text: #1a1a18;
+  --sgs-text-muted: #6e6e66;
+  --sgs-text-dim: #9a9a90;
+  --sgs-border: #e0e0d8;
+  --sgs-border-strong: #1a1a18;
+
+  --sgs-accent: #1a1a18;
+  --sgs-accent-2: #6e6e66;
+  --sgs-accent-contrast: #fafaf7;
+  --sgs-stream: #1a1a18;
+  --sgs-badge-bg: transparent;
+  --sgs-badge-text: #1a1a18;
+  --sgs-focus: #1a1a18;
+
+  --sgs-radius: 0;
+  --sgs-radius-sm: 0;
+  --sgs-radius-pill: 0;
+  --sgs-card-shadow: none;
+  --sgs-card-shadow-hover: none;
+
+  --sgs-gap: 24px;
+  --sgs-pad: 28px;
+  --sgs-card-pad: 14px 2px 0;
+
+  --sgs-font: Helvetica, Arial, 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: var(--sgs-font);
+  --sgs-font-num: var(--sgs-font);
+  --sgs-title-weight: 300;
+  --sgs-title-spacing: .12em;
+  --sgs-card-title-size: 13px;
+  --sgs-card-title-weight: 400;
+  --sgs-meta-size: 11px;
+  --sgs-label-spacing: .25em;
+}
+
+:root .site-header { padding-bottom: 24px; }
+:root .site-desc { color: #6e6e66; }
+
+:root .stat-chip {
+  border: none;
+  background: transparent;
+  padding: 0 14px 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+:root .stat-chip-value { font-weight: 400; }
+
+:root .channel-link,
+:root .lang-toggle {
+  border-color: #1a1a18;
+  background: transparent;
+  color: #1a1a18;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .25em;
+}
+:root .channel-link:hover,
+:root .lang-toggle:hover { background: #1a1a18; color: #fafaf7; }
+
+:root .search-input,
+:root .filter-select,
+:root .sort-select {
+  border: none;
+  border-bottom: 1px solid #1a1a18;
+  background: transparent;
+  padding-left: 0;
+}
+
+/* カード: 枠なし。画像＋テキストだけで並ぶ */
+:root .game-card {
+  border: none;
+  background: transparent;
+}
+:root .game-card:hover,
+:root .game-card:focus-within { transform: none; }
+:root .game-card:hover .card-thumb-img { transform: none; opacity: .82; }
+
+:root .card-thumb { background: #f0f0ea; }
+:root .card-thumb-placeholder { background: #f0f0ea; color: #c3c3b8; font-size: 22px; }
+
+:root .played-badge {
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  background: rgba(250, 250, 247, .92);
+  color: #1a1a18;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+}
+
+:root .card-meta { letter-spacing: .06em; }
+:root .stream-link { color: #1a1a18; }
+:root .stream-link:hover { background: #1a1a18; color: #fafaf7; }
+
+:root .empty-state,
+:root .notice-panel { border-color: #e0e0d8; background: transparent; }
+:root .notice-title { font-weight: 300; }

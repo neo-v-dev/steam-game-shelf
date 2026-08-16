@@ -1,0 +1,143 @@
+/* ============================================================
+   broadcast.css (site/themes/broadcast.css)
+   design-deliverable/css/theme-broadcast.css を移植。
+   「.theme-broadcast」を「:root」に置換し(<html class> 不要にするため)、
+   自前ホストの @font-face を追加している(REQ-040)。
+   フォント: Oswald(見出し・数値, 自前ホスト subset) / 本文は system-ui 等システムフォント代替
+   ============================================================ */
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/oswald-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/oswald-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/oswald-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============================================================
+   theme-broadcast — 放送テロップ / ローワーサード
+   (デザインカタログ variant: broadcast)
+
+   本文フォントは Noto Sans JP を同梱せずシステム代替(--sgs-font, サイズ過大のため)。
+   見出し・数値フォント(Oswald)のみ上記の @font-face で自前ホストしている。
+   ============================================================ */
+
+:root {
+  --sgs-bg: #080d1a;
+  --sgs-bg-image: linear-gradient(135deg, #101a30, #0a1020);
+  --sgs-surface: #0e1729;
+  --sgs-surface-2: #16213a;
+  --sgs-text: #ffffff;
+  --sgs-text-muted: #7d8aa8;
+  --sgs-text-dim: #66738f;
+  --sgs-border: rgba(255, 255, 255, .14);
+  --sgs-border-strong: rgba(255, 255, 255, .3);
+
+  --sgs-accent: #e8102d;
+  --sgs-accent-2: #ffffff;
+  --sgs-accent-contrast: #ffffff;
+  --sgs-stream: #e8102d;
+  --sgs-badge-bg: #e8102d;
+  --sgs-badge-text: #ffffff;
+  --sgs-focus: #ffffff;
+
+  --sgs-radius: 2px;
+  --sgs-radius-sm: 2px;
+  --sgs-radius-pill: 2px;
+  --sgs-card-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+  --sgs-card-shadow-hover: 0 8px 22px rgba(0, 0, 0, .6);
+
+  --sgs-font: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: 'Oswald', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-num: 'Oswald', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-title-weight: 700;
+  --sgs-title-spacing: .04em;
+  --sgs-title-transform: uppercase;
+  --sgs-card-title-weight: 500;
+  --sgs-label-spacing: .2em;
+}
+
+/* ヘッダー = ローワーサード（左に赤帯 + LIVE タリー） */
+:root .site-header {
+  position: relative;
+  padding-left: 18px;
+  border-bottom: 2px solid rgba(255, 255, 255, .12);
+}
+:root .site-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #e8102d;
+}
+:root .site-title { color: #fff; }
+:root .site-desc { color: #7d8aa8; }
+
+:root .stat-chip {
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(255, 255, 255, .14);
+  font-family: var(--sgs-font-title);
+  text-transform: uppercase;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+}
+:root .stat-chip-value { color: #fff; }
+
+:root .channel-link {
+  background: #e8102d;
+  border-color: #e8102d;
+  color: #fff;
+  text-transform: uppercase;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+:root .channel-link:hover { background: #b60d24; border-color: #b60d24; }
+:root .lang-toggle { text-transform: uppercase; }
+
+/* カード: 下辺の赤ライン、ホバーで白へ */
+:root .game-card { border-bottom: 3px solid #e8102d; }
+:root .game-card:hover,
+:root .game-card:focus-within {
+  border-color: rgba(255, 255, 255, .35);
+  border-bottom-color: #fff;
+}
+
+:root .card-thumb-placeholder {
+  background: linear-gradient(135deg, #16213a, #0a1020);
+  color: rgba(125, 138, 168, .8);
+}
+
+:root .played-badge {
+  border-radius: 0;
+  font-family: var(--sgs-font-title);
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+  padding: 3px 12px;
+}
+
+:root .card-meta { font-family: var(--sgs-font-title); letter-spacing: .06em; }
+:root .meta-row-unplayed { color: #66738f; }
+
+:root .empty-state,
+:root .notice-panel { background: rgba(255, 255, 255, .04); }
+:root .notice-title { color: #fff; }
+:root .site-footer { text-transform: uppercase; }

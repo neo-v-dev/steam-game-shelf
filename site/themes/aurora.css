@@ -1,0 +1,135 @@
+/* ============================================================
+   aurora.css (site/themes/aurora.css)
+   design-deliverable/css/theme-aurora.css を移植。
+   「.theme-aurora」を「:root」に置換し(<html class> 不要にするため)、
+   自前ホストの @font-face を追加している(REQ-040)。
+   フォント: Space Grotesk(見出し・数値, 自前ホスト subset) / 本文は system-ui 等システムフォント代替
+   ============================================================ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/space-grotesk-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/space-grotesk-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/space-grotesk-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============================================================
+   theme-aurora — モダン SaaS ダーク・霧状グラデ
+   (デザインカタログ variant: aurora)
+
+   本文フォントは Noto Sans JP を同梱せずシステム代替(--sgs-font, サイズ過大のため)。
+   見出し・数値フォント(Space Grotesk)のみ上記の @font-face で自前ホストしている。
+   ============================================================ */
+
+:root {
+  --sgs-bg: #0a0a12;
+  --sgs-bg-image:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(124, 92, 255, .22), transparent 65%),
+    radial-gradient(ellipse 60% 80% at 85% 12%, rgba(45, 168, 255, .16), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 55% 100%, rgba(255, 92, 168, .1), transparent 60%);
+  --sgs-surface: rgba(255, 255, 255, .045);
+  --sgs-surface-2: rgba(255, 255, 255, .08);
+  --sgs-text: #f2f2f8;
+  --sgs-text-muted: #a6a6c0;
+  --sgs-text-dim: #8d8da8;
+  --sgs-border: rgba(255, 255, 255, .12);
+  --sgs-border-strong: rgba(255, 255, 255, .28);
+
+  --sgs-accent: #9d7bff;
+  --sgs-accent-2: #2da8ff;
+  --sgs-accent-contrast: #0a0a12;
+  --sgs-stream: #ff5ca8;
+  --sgs-badge-bg: rgba(124, 92, 255, .22);
+  --sgs-badge-text: #d9cdff;
+  --sgs-focus: #9d7bff;
+
+  --sgs-radius: 14px;
+  --sgs-radius-sm: 10px;
+  --sgs-card-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  --sgs-card-shadow-hover: 0 10px 30px rgba(124, 92, 255, .22);
+
+  --sgs-font: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-title: 'Space Grotesk', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-font-num: 'Space Grotesk', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --sgs-title-weight: 700;
+  --sgs-title-spacing: -.02em;
+  --sgs-label-spacing: .1em;
+  --sgs-dur: .2s;
+}
+
+:root .site-title {
+  background: linear-gradient(90deg, #f2f2f8, #9d7bff 55%, #2da8ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:root .site-header { border-bottom-color: rgba(255, 255, 255, .1); }
+
+:root .stat-chip {
+  background: rgba(255, 255, 255, .05);
+  backdrop-filter: blur(8px);
+  text-transform: uppercase;
+}
+:root .stat-chip-value { color: #f2f2f8; }
+
+:root .channel-link { border-color: rgba(255, 92, 168, .6); color: #ff8cc4; }
+:root .channel-link:hover { background: #ff5ca8; border-color: #ff5ca8; }
+:root .lang-toggle { background: rgba(255, 255, 255, .06); backdrop-filter: blur(8px); }
+
+:root .search-input,
+:root .filter-select,
+:root .sort-select {
+  background: rgba(255, 255, 255, .05);
+  backdrop-filter: blur(8px);
+}
+
+/* カード: すりガラス + ホバーで紫グロー */
+:root .game-card { backdrop-filter: blur(10px); }
+:root .game-card:hover,
+:root .game-card:focus-within {
+  border-color: rgba(157, 123, 255, .5);
+  background: rgba(255, 255, 255, .07);
+}
+
+:root .card-thumb-placeholder {
+  background: linear-gradient(140deg, rgba(124, 92, 255, .25), rgba(45, 168, 255, .18));
+  color: rgba(242, 242, 248, .55);
+}
+
+:root .played-badge {
+  border: 1px solid rgba(157, 123, 255, .45);
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+
+:root .card-meta { font-variant-numeric: tabular-nums; }
+
+:root .empty-state,
+:root .notice-panel {
+  background: rgba(255, 255, 255, .045);
+  backdrop-filter: blur(10px);
+}
+:root .notice-title {
+  background: linear-gradient(90deg, #9d7bff, #ff5ca8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

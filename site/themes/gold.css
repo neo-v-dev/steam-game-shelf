@@ -1,0 +1,125 @@
+/* ============================================================
+   gold.css (site/themes/gold.css)
+   design-deliverable/css/theme-gold.css を移植。
+   「.theme-gold」を「:root」に置換し(<html class> 不要にするため)、
+   自前ホストの @font-face を追加している(REQ-040)。
+   フォント: Cormorant Garamond(本文・見出し・数値, 自前ホスト subset・italic含む) / 和文は Hiragino Mincho ProN 等システムフォント代替
+   ============================================================ */
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/cormorant-garamond-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/cormorant-garamond-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/cormorant-garamond-400-italic.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --sgs-bg: #0c0b08;
+  --sgs-bg-image: radial-gradient(90% 60% at 50% -10%, rgba(233, 207, 143, .1), transparent 70%);
+  --sgs-surface: #14120d;
+  --sgs-surface-2: #1c1913;
+  --sgs-text: #f2e6c8;
+  --sgs-text-muted: #b9a578;
+  --sgs-text-dim: #8f7d55;
+  --sgs-border: rgba(233, 207, 143, .28);
+  --sgs-border-strong: rgba(233, 207, 143, .6);
+
+  --sgs-accent: #e9cf8f;
+  --sgs-accent-2: #f5e0a5;
+  --sgs-accent-contrast: #0c0b08;
+  --sgs-stream: #d9a03f;
+  --sgs-badge-bg: rgba(233, 207, 143, .14);
+  --sgs-badge-text: #f5e0a5;
+  --sgs-focus: #e9cf8f;
+
+  --sgs-radius: 3px;
+  --sgs-radius-sm: 2px;
+  --sgs-radius-pill: 2px;
+  --sgs-card-shadow: 0 2px 14px rgba(0, 0, 0, .6);
+  --sgs-card-shadow-hover: 0 8px 28px rgba(0, 0, 0, .7);
+
+  --sgs-gap: 20px;
+  --sgs-card-pad: 14px;
+
+  --sgs-font: 'Cormorant Garamond', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif;
+  --sgs-font-title: var(--sgs-font);
+  --sgs-font-num: var(--sgs-font);
+  --sgs-title-size: clamp(28px, 5.5vw, 46px);
+  --sgs-title-weight: 600;
+  --sgs-title-spacing: .1em;
+  --sgs-card-title-size: 17px;
+  --sgs-card-title-weight: 600;
+  --sgs-meta-size: 13px;
+  --sgs-label-spacing: .18em;
+}
+
+:root .site-title {
+  background: linear-gradient(180deg, #f5e0a5, #a8842f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* 英数のみイタリック。和文はダミーオブリークを避ける */
+:root .site-desc,
+:root .stat-chip,
+:root .card-meta {
+  font-style: italic;
+  font-synthesis: weight;
+}
+
+:root .site-header { border-bottom-color: rgba(233, 207, 143, .35); }
+
+:root .stat-chip { background: #14120d; }
+:root .stat-chip-value { color: #f5e0a5; font-style: normal; }
+
+:root .channel-link,
+:root .lang-toggle { letter-spacing: .18em; }
+:root .lang-toggle { border-color: rgba(233, 207, 143, .4); color: #e9cf8f; }
+
+/* カード: 内側に細い金の罫 */
+:root .game-card { box-shadow: var(--sgs-card-shadow), inset 0 0 0 1px rgba(233, 207, 143, .08); }
+:root .game-card:hover,
+:root .game-card:focus-within {
+  border-color: rgba(233, 207, 143, .7);
+  box-shadow: var(--sgs-card-shadow-hover), inset 0 0 0 1px rgba(233, 207, 143, .25);
+}
+
+:root .card-thumb { border-bottom: 1px solid rgba(233, 207, 143, .22); }
+:root .card-thumb-img { filter: sepia(.18) saturate(.95) brightness(.94); }
+:root .game-card:hover .card-thumb-img { filter: sepia(.05) saturate(1) brightness(1); }
+:root .card-thumb-placeholder {
+  background: radial-gradient(70% 70% at 50% 40%, #1f1b13, #100e0a);
+  color: rgba(233, 207, 143, .5);
+}
+
+:root .played-badge {
+  border: 1px solid rgba(233, 207, 143, .5);
+  font-weight: 600;
+}
+
+:root .empty-state,
+:root .notice-panel { background: #14120d; }
+:root .notice-title {
+  background: linear-gradient(180deg, #f5e0a5, #a8842f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
